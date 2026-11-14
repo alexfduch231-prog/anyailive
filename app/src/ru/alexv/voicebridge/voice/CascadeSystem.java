@@ -1,13 +1,8 @@
 package ru.alexv.voicebridge.voice;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,12 +15,12 @@ import java.util.concurrent.Executors;
 import ru.alexv.voicebridge.data.Model;
 
 /**
- * Каскад на системных API: SpeechRecognizer (вход) → чат через {@link Chat} → системный TTS (выход).
+ * Каскад на системных API: {@link SystemStt} (вход) → чат через {@link Chat} → {@link SystemTts} (выход).
  *
- * Работает без ключей и без сети, кроме самого чата. Полудуплекс: пока говорим — не слушаем
- * (свой микрофон в руках системы), перебивание — через {@link #stop()} / {@link #stopSpeech()}.
- * TTS синтезируется в файл и играется через {@link AudioOut}, чтобы замолкать мгновенно;
- * если файл получить нельзя, остаётся speak() — тогда звуком управляет система.
+ * Работает без ключей и без сети, кроме самого чата. Полудуплексный: пока говорим — не слушаем.
+ * Перебивание — {@link #stop()} / {@link #stopSpeech()} (во время озвучки распознавание не идёт,
+ * поэтому голосом не перебить). TTS синтезируется в файл и играется через {@link AudioOut},
+ * чтобы замолкать мгновенно; если файл получить нельзя, звуком управляет система.
  */
 public final class CascadeSystem implements VoiceEngine {
 
@@ -63,7 +58,7 @@ public final class CascadeSystem implements VoiceEngine {
     private final List<ChatMsg> history = new ArrayList<ChatMsg>();
     private final ArrayDeque<String> speech = new ArrayDeque<String>();
 
-    private SpeechRecognizer recognizer;
+    private SystemStt stt;
     private SystemTts tts;
     private AudioOut audioOut;
     private ExecutorService chatWorker;
@@ -101,7 +96,7 @@ public final class CascadeSystem implements VoiceEngine {
         return language;
     }
 
-    /** Модель, для которой запущен движок (может быть null, если чат внешний). */
+    /** Модель, под которую настроен движок (может быть null, если чат внешний). */
     public Model model() {
         return model;
     }
@@ -130,7 +125,7 @@ public final class CascadeSystem implements VoiceEngine {
             fail("Нет доступа к системе: приложение запущено неправильно");
             return;
         }
-        if (!SpeechRecognizer.isRecognitionAvailable(ctx)) {
+        if (!SystemStt.available(ctx)) {
             fail("Распознавание речи недоступно на этом устройстве");
             return;
         }
@@ -144,154 +139,40 @@ public final class CascadeSystem implements VoiceEngine {
         tts = new SystemTts(ctx, language, audioOut == null ? 0 : AudioOut.SAMPLE_RATE);
         tts.setCallback(voice);
         if (!tts.start()) {
-            return; // onUnavailable уже уйдёт в onError
+            return; // причина уже ушла в onUnavailable → onError
         }
-        if (!createRecognizer()) {
+        stt = new SystemStt(ctx, language);
+        if (!stt.start(ears)) {
             return;
         }
-        listen();
-    }
-
-    private boolean createRecognizer() {
-        try {
-            recognizer = SpeechRecognizer.createSpeechRecognizer(ctx);
-            recognizer.setRecognitionListener(new RecognizeListener());
-            return true;
-        } catch (RuntimeException e) {
-            fail("Не удалось создать распознавание речи: " + e.getMessage());
-            return false;
-        }
+        stt.listen();
     }
 
     // ---------------------------------------------------------------- вход
 
-    private void listen() {
-        if (!running || recognizer == null) {
-            return;
-        }
-        setState(LISTENING);
-        Intent it = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE, language);
-        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language);
-        it.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-        it.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-        try {
-            recognizer.startListening(it);
-        } catch (RuntimeException e) {
-            fail("Не удалось включить микрофон: " + e.getMessage());
-        }
-    }
-
-    private void cancelListening() {
-        SpeechRecognizer r = recognizer;
-        if (r == null) {
-            return;
-        }
-        try {
-            r.cancel();
-        } catch (RuntimeException ignored) {
-            // уже не слушаем
-        }
-    }
-
-    private final class RecognizeListener implements RecognitionListener {
+    private final SystemStt.Listener ears = new SystemStt.Listener() {
         @Override
-        public void onReadyForSpeech(Bundle params) {
+        public void onText(String text) {
+            handleUserText(text);
         }
 
         @Override
-        public void onBeginningOfSpeech() {
-        }
-
-        @Override
-        public void onRmsChanged(float rmsdB) {
-        }
-
-        @Override
-        public void onBufferReceived(byte[] buffer) {
-        }
-
-        @Override
-        public void onEndOfSpeech() {
+        public void onThinking() {
             setState(THINKING);
         }
 
         @Override
-        public void onError(int error) {
-            if (!running) {
-                return;
-            }
-            switch (error) {
-                case SpeechRecognizer.ERROR_NO_MATCH:
-                case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                    // Тишина — это не ошибка, слушаем дальше.
-                    main.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            listen();
-                        }
-                    }, 250);
-                    break;
-                case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                    cancelListening();
-                    main.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            listen();
-                        }
-                    }, 400);
-                    break;
-                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                    fail("Нет разрешения на микрофон: включите его в настройках приложения");
-                    break;
-                case SpeechRecognizer.ERROR_NETWORK:
-                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                case SpeechRecognizer.ERROR_SERVER:
-                    fail("Сервис распознавания недоступен — проверьте интернет");
-                    break;
-                case SpeechRecognizer.ERROR_AUDIO:
-                    fail("Микрофон не работает: устройство занято другим приложением");
-                    break;
-                default:
-                    fail("Ошибка распознавания речи (код " + error + ")");
-                    break;
+        public void onListening() {
+            if (running && state != SPEAKING) {
+                setState(LISTENING);
             }
         }
 
         @Override
-        public void onResults(Bundle results) {
-            if (!running) {
-                return;
-            }
-            String text = firstResult(results);
-            if (text.length() == 0) {
-                listen();
-            } else {
-                handleUserText(text);
-            }
+        public void onError(String message) {
+            fail(message);
         }
-
-        @Override
-        public void onPartialResults(Bundle partialResults) {
-            // Черновик не показываем: onUserText — только финальный текст.
-        }
-
-        @Override
-        public void onEvent(int eventType, Bundle params) {
-        }
-    }
-
-    private static String firstResult(Bundle b) {
-        if (b == null) {
-            return "";
-        }
-        ArrayList<String> list = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (list == null || list.isEmpty() || list.get(0) == null) {
-            return "";
-        }
-        return list.get(0).trim();
-    }
+    };
 
     // --------------------------------------------------------------- чат
 
@@ -306,7 +187,9 @@ public final class CascadeSystem implements VoiceEngine {
                 if (!running) {
                     return;
                 }
-                cancelListening();
+                if (stt != null) {
+                    stt.cancel();
+                }
                 stopSpeech();
                 handleUserText(text.trim());
             }
@@ -314,14 +197,14 @@ public final class CascadeSystem implements VoiceEngine {
     }
 
     private void handleUserText(String text) {
-        cancelListening();
+        if (stt != null) {
+            stt.cancel();
+        }
         Callback c = cb;
         if (c != null) {
             c.onUserText(text);
         }
-        synchronized (history) {
-            history.add(new ChatMsg("user", text));
-        }
+        record(new ChatMsg("user", text));
         setState(THINKING);
         if (chat == null) {
             onReply("Чат не подключён — ответить нечем.");
@@ -359,14 +242,19 @@ public final class CascadeSystem implements VoiceEngine {
         });
     }
 
+    private void record(ChatMsg msg) {
+        synchronized (history) {
+            history.add(msg);
+            while (history.size() > HISTORY_LIMIT * 2) {
+                history.remove(0);
+            }
+        }
+    }
+
     private List<ChatMsg> snapshot() {
         synchronized (history) {
-            List<ChatMsg> copy = new ArrayList<ChatMsg>(history.size());
             int from = Math.max(0, history.size() - HISTORY_LIMIT);
-            for (int i = from; i < history.size(); i++) {
-                copy.add(history.get(i));
-            }
-            return copy;
+            return new ArrayList<ChatMsg>(history.subList(from, history.size()));
         }
     }
 
@@ -374,12 +262,7 @@ public final class CascadeSystem implements VoiceEngine {
         if (!running) {
             return;
         }
-        synchronized (history) {
-            history.add(new ChatMsg("assistant", reply));
-            while (history.size() > HISTORY_LIMIT * 2) {
-                history.remove(0);
-            }
-        }
+        record(new ChatMsg("assistant", reply));
         Callback c = cb;
         if (c != null) {
             c.onAssistantText(reply);
@@ -399,16 +282,16 @@ public final class CascadeSystem implements VoiceEngine {
         for (String p : s.finish()) {
             phrases.add(p);
         }
-        if (phrases.isEmpty()) {
-            phrases.add(reply);
-        }
         synchronized (speech) {
             speech.clear();
             for (String p : phrases) {
-                String speakable = Sentences.stripMarkdown(p);
-                if (speakable.length() > 0) {
-                    speech.add(speakable);
+                String say = Sentences.stripMarkdown(p);
+                if (say.length() > 0) {
+                    speech.add(say);
                 }
+            }
+            if (speech.isEmpty()) {
+                speech.add(Sentences.stripMarkdown(reply));
             }
         }
     }
@@ -421,7 +304,7 @@ public final class CascadeSystem implements VoiceEngine {
         synchronized (speech) {
             phrase = speech.poll();
         }
-        if (phrase == null || tts == null) {
+        if (phrase == null || phrase.length() == 0 || tts == null) {
             finishTurn();
             return;
         }
@@ -437,13 +320,8 @@ public final class CascadeSystem implements VoiceEngine {
             }
             AudioOut out = audioOut;
             if (pcm == null || out == null) {
-                // Озвучивала система — она уже доиграла.
-                main.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        speakNext();
-                    }
-                }, 120);
+                // Озвучивала система — она уже доиграла, берём следующую фразу.
+                main.postDelayed(speakNextRun, 120);
                 return;
             }
             out.write(pcm, pcm.length);
@@ -465,6 +343,13 @@ public final class CascadeSystem implements VoiceEngine {
         }
     };
 
+    private final Runnable speakNextRun = new Runnable() {
+        @Override
+        public void run() {
+            speakNext();
+        }
+    };
+
     private final Runnable watchPlayback = new Runnable() {
         @Override
         public void run() {
@@ -481,6 +366,12 @@ public final class CascadeSystem implements VoiceEngine {
     };
 
     /** Оборвать озвучку (перебивание) и очистить очередь фраз. */
+    /** Перебивание кнопкой: глушим озвучку и продолжаем слушать. */
+    @Override
+    public void interrupt() {
+        stopSpeech();
+    }
+
     public void stopSpeech() {
         synchronized (speech) {
             speech.clear();
@@ -503,7 +394,9 @@ public final class CascadeSystem implements VoiceEngine {
         main.postDelayed(new Runnable() {
             @Override
             public void run() {
-                listen();
+                if (running && stt != null) {
+                    stt.listen();
+                }
             }
         }, 150);
     }
@@ -541,15 +434,10 @@ public final class CascadeSystem implements VoiceEngine {
     private void releaseAll() {
         running = false;
         state = IDLE;
-        cancelListening();
-        SpeechRecognizer r = recognizer;
-        recognizer = null;
-        if (r != null) {
-            try {
-                r.destroy();
-            } catch (RuntimeException ignored) {
-                // уже уничтожен
-            }
+        SystemStt s = stt;
+        stt = null;
+        if (s != null) {
+            s.stop();
         }
         SystemTts t = tts;
         tts = null;
@@ -587,7 +475,7 @@ public final class CascadeSystem implements VoiceEngine {
         }
     }
 
-    /** Для UI: куда складывать записанное, если нужно сохранить файл реплики. */
+    /** Куда складываются временные файлы синтеза (для отладки и сохранения реплик). */
     public File cacheDir() {
         return ctx == null ? null : ctx.getCacheDir();
     }

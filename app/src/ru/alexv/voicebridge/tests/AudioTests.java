@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import ru.alexv.voicebridge.voice.CascadeHttp;
+import ru.alexv.voicebridge.voice.CascadeStt;
 import ru.alexv.voicebridge.voice.HttpWire;
 import ru.alexv.voicebridge.voice.Resampler;
 import ru.alexv.voicebridge.voice.Sentences;
@@ -226,9 +227,9 @@ public final class AudioTests {
         Map<String, String> extra = HttpWire.headers("sk", "X-Org: me\nX-Empty\n");
         check("Wire.headers: свои строки", "me".equals(extra.get("X-Org")) && !extra.containsKey("X-Empty"));
 
-        check("CascadeHttp.transcript", "привет".equals(
-                CascadeHttp.transcript("{\"text\":\"привет\"}")));
-        check("CascadeHttp.transcript: пусто на мусор", "".equals(CascadeHttp.transcript("<html>")));
+        check("CascadeStt.transcript", "привет".equals(
+                CascadeStt.transcript("{\"text\":\"привет\"}")));
+        check("CascadeStt.transcript: пусто на мусор", "".equals(CascadeStt.transcript("<html>")));
 
         byte[] raw = tone(200, 3000);
         check("CascadeHttp.binaryAudio: WAV -> PCM",
@@ -236,8 +237,8 @@ public final class AudioTests {
         check("CascadeHttp.binaryAudio: сырой PCM как есть",
                 Arrays.equals(CascadeHttp.binaryAudio(raw), raw));
 
-        List<String> phr = CascadeHttp.phrases("**Привет**. Как дела?");
-        check("CascadeHttp.phrases: нарезка и чистка", phr.size() == 2
+        List<String> phr = Sentences.speechPhrases("**Привет**. Как дела?", 25);
+        check("Sentences.speechPhrases: нарезка и чистка", phr.size() == 2
                 && "Привет.".equals(phr.get(0)) && "Как дела?".equals(phr.get(1)));
     }
 

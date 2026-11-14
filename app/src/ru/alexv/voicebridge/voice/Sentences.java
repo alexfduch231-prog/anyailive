@@ -165,6 +165,35 @@ public final class Sentences {
         return t;
     }
 
+    /**
+     * Готовые к озвучке куски целого текста: нарезка + чистка от markdown.
+     * Пустые после чистки куски выбрасываются.
+     */
+    public static List<String> speechPhrases(String text, int minChars) {
+        List<String> out = new ArrayList<String>();
+        if (text == null) {
+            return out;
+        }
+        Sentences s = new Sentences(minChars);
+        List<String> raw = new ArrayList<String>();
+        for (String p : s.feed(text)) {
+            raw.add(p);
+        }
+        for (String p : s.finish()) {
+            raw.add(p);
+        }
+        if (raw.isEmpty()) {
+            raw.add(text);
+        }
+        for (String p : raw) {
+            String say = stripMarkdown(p);
+            if (say.length() > 0) {
+                out.add(say);
+            }
+        }
+        return out;
+    }
+
     /** Есть ли в строке что-то произносимое. */
     public static boolean speakable(String s) {
         return stripMarkdown(s).length() > 0;

@@ -1,8 +1,10 @@
 package ru.alexv.voicebridge.ui;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -21,14 +23,19 @@ import java.util.List;
 
 import ru.alexv.voicebridge.R;
 import ru.alexv.voicebridge.chat.ChatClient;
+import ru.alexv.voicebridge.chat.ChatLink;
 import ru.alexv.voicebridge.data.ChatStore;
 import ru.alexv.voicebridge.data.Model;
 import ru.alexv.voicebridge.data.ModelsStore;
 import ru.alexv.voicebridge.data.SecretStore;
+import ru.alexv.voicebridge.voice.CascadeHttp;
+import ru.alexv.voicebridge.voice.CascadeSystem;
+import ru.alexv.voicebridge.voice.VoiceEngine;
 
 /**
  * Переписка с моделью: потоковый текстовый чат.
- * Микрофон и Live — заглушки, их движки делают другие части приложения.
+ * Микрофон включает голосовой каскад (STT -> чат -> TTS) прямо в этом экране,
+ * кнопка Live открывает {@link LiveActivity} с нативным realtime-протоколом.
  */
 public class ChatActivity extends Activity {
 
@@ -54,6 +61,10 @@ public class ChatActivity extends Activity {
     private View empty;
 
     private volatile boolean streaming;
+
+    /** Голосовой каскад, пока он включён; null — голосовой режим выключен. */
+    private VoiceEngine voice;
+    private static final int REQ_MIC = 42;
 
     public static Intent intent(Context from, long chatId) {
         Intent i = new Intent(from, ChatActivity.class);
@@ -99,13 +110,17 @@ public class ChatActivity extends Activity {
         findViewById(R.id.btn_mic).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(ChatActivity.this, R.string.later, Toast.LENGTH_SHORT).show();
+                toggleVoice();
             }
         });
         findViewById(R.id.btn_live).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(ChatActivity.this, R.string.later, Toast.LENGTH_SHORT).show();
+                if (chat == null) {
+                    Toast.makeText(ChatActivity.this, R.string.chat_no_model, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                startActivity(LiveActivity.intent(ChatActivity.this, chat.id));
             }
         });
     }
@@ -114,6 +129,12 @@ public class ChatActivity extends Activity {
     protected void onResume() {
         super.onResume();
         reload();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopVoice();
     }
 
     private void reload() {
@@ -225,6 +246,115 @@ public class ChatActivity extends Activity {
                 }, 120000L);
             }
         }, "chat-stream").start();
+    }
+
+    /**
+     * Микрофон: первый тап запускает каскад, второй — глушит его.
+     * Каскад по HTTP берём, когда у модели заполнены адрес сервера и модель распознавания;
+     * иначе работаем на системных STT/TTS телефона.
+     */
+    private void toggleVoice() {
+        if (voice != null) {
+            stopVoice();
+            return;
+        }
+        if (chat == null || model == null) {
+            Toast.makeText(this, R.string.chat_no_model, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+            return;
+        }
+        startVoice();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+        if (code == REQ_MIC && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            startVoice();
+        }
+    }
+
+    private void startVoice() {
+        if (chat == null || model == null || streaming) {
+            return;
+        }
+        String prompt = getString(R.string.live_system_prompt);
+        String language = getString(R.string.voice_language_default);
+        ChatLink link = new ChatLink(client, model, apiKey);
+        boolean http = model.baseUrl != null && model.baseUrl.length() > 0
+                && model.sttModel != null && model.sttModel.length() > 0;
+        voice = http
+                ? new CascadeHttp(this, model, link, prompt, language)
+                : new CascadeSystem(this, model, link, prompt, language);
+        setMicLabel(R.string.voice_mode_stop);
+        voice.start(new VoiceEngine.Callback() {
+            @Override
+            public void onState(final int state) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        setMicLabel(state == VoiceEngine.LISTENING ? R.string.voice_mode_listening
+                                : state == VoiceEngine.THINKING ? R.string.voice_mode_thinking
+                                : state == VoiceEngine.SPEAKING ? R.string.voice_mode_speaking
+                                : R.string.voice_mode_stop);
+                    }
+                });
+            }
+
+            @Override
+            public void onUserText(final String text) {
+                if (text != null && text.trim().length() > 0) {
+                    store.addMessage(chat.id, "user", text.trim());
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            reload();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onAssistantText(final String text) {
+                if (text != null && text.trim().length() > 0) {
+                    store.addMessage(chat.id, "assistant", text.trim());
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            reload();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(final String message) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ChatActivity.this, message, Toast.LENGTH_LONG).show();
+                        stopVoice();
+                    }
+                });
+            }
+        });
+    }
+
+    private void stopVoice() {
+        if (voice != null) {
+            voice.stop();
+            voice = null;
+        }
+        setMicLabel(R.string.voice_mode_start);
+    }
+
+    private void setMicLabel(int res) {
+        Button mic = (Button) findViewById(R.id.btn_mic);
+        if (mic != null) {
+            mic.setText(res);
+        }
     }
 
     private void setBusy(boolean busy) {

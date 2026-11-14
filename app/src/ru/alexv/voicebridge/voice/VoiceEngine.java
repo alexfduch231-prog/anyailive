@@ -32,4 +32,15 @@ public interface VoiceEngine {
 
     /** Отправить текстовую реплику из UI в текущую сессию. */
     void sendText(String text);
+
+    /**
+     * Кусок живой речи с микрофона (16 кГц, PCM16 mono).
+     * Нужен нативному Live; каскаду не нужен — он сам читает микрофон.
+     */
+    default void sendAudio(byte[] pcm16k) {
+    }
+
+    /** Перебить модель: Live отменяет текущий ответ, каскад глушит озвучку. */
+    default void interrupt() {
+    }
 }

@@ -38,5 +38,12 @@
             android:exported="false"
             android:label="@string/chat_actions"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.LiveActivity"
+            android:exported="false"
+            android:label="@string/live_title"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

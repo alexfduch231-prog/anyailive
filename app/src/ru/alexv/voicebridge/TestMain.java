@@ -2,6 +2,10 @@ package ru.alexv.voicebridge;
 
 import ru.alexv.voicebridge.data.Model;
 import ru.alexv.voicebridge.net.SseParser;
+import ru.alexv.voicebridge.tests.AudioTests;
+import ru.alexv.voicebridge.tests.ChatTests;
+import ru.alexv.voicebridge.tests.JsonTests;
+import ru.alexv.voicebridge.tests.LiveTests;
 
 /**
  * Headless-проверки логики: запускается на обычной JVM, без Android.
@@ -68,6 +72,11 @@ public class TestMain {
 
         sseTests();
         modelTests();
+
+        JsonTests.run();
+        LiveTests.run();
+        ChatTests.run();
+        AudioTests.run();
 
         System.out.println();
         System.out.println(fails == 0 ? ("PASS " + total + " checks") : ("FAILURES " + fails + "/" + total));

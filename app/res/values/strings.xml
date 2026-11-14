@@ -89,4 +89,26 @@
     <string name="voice_no_base_url">У модели не заполнен адрес сервера (baseUrl)</string>
     <string name="voice_empty_reply">Модель вернула пустой ответ.</string>
     <string name="voice_no_chat">Чат не подключён — ответить нечем.</string>
+
+    <!-- Экран Live (ui/LiveActivity) -->
+    <string name="live_title">Живой голос</string>
+    <string name="live_connecting">Соединяюсь\u2026</string>
+    <string name="live_listening">Слушаю</string>
+    <string name="live_thinking">Думаю</string>
+    <string name="live_speaking">Говорю</string>
+    <string name="live_idle">Готов</string>
+    <string name="live_no_live">Эта модель не умеет Live — включите протокол в настройках модели</string>
+    <string name="live_mic_denied">Без микрофона живой голос не работает</string>
+    <string name="live_no_model">Чат не найден или у него нет модели</string>
+    <string name="live_interrupt">Перебить</string>
+    <string name="live_hangup">Завершить</string>
+    <string name="live_input_hint">Написать текстом</string>
+    <string name="live_half_duplex">Эхоподавление недоступно: микрофон глушу, пока говорит модель</string>
+    <string name="live_system_prompt">Ты голосовой собеседник. Отвечай коротко и по делу, одним-двумя предложениями.</string>
+    <string name="voice_mode_start">Микрофон</string>
+    <string name="voice_mode_stop">Стоп</string>
+    <string name="voice_mode_listening">Слушаю\u2026</string>
+    <string name="voice_mode_thinking">Думаю\u2026</string>
+    <string name="voice_mode_speaking">Говорю\u2026</string>
+    <string name="voice_language_default">ru-RU</string>
 </resources>
