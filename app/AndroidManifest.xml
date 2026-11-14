@@ -23,6 +23,11 @@
         </activity>
 
         <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title" />
+
+        <activity
             android:name=".ui.ModelsActivity"
             android:exported="false"
             android:label="@string/btn_models" />

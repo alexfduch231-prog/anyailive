@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_title"
+            android:textColor="@color/fg"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/settings_hint"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+
+        <TextView
+            style="@style/SettingsLabel"
+            android:text="@string/settings_engine" />
+
+        <Spinner
+            android:id="@+id/set_engine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            style="@style/SettingsLabel"
+            android:text="@string/settings_language" />
+
+        <EditText
+            android:id="@+id/set_language"
+            style="@style/SettingsInput"
+            android:hint="@string/settings_language_hint"
+            android:inputType="text" />
+
+        <TextView
+            style="@style/SettingsLabel"
+            android:text="@string/settings_stt" />
+
+        <EditText
+            android:id="@+id/set_stt"
+            style="@style/SettingsInput"
+            android:hint="@string/settings_stt_hint"
+            android:inputType="text" />
+
+        <TextView
+            style="@style/SettingsLabel"
+            android:text="@string/settings_tts" />
+
+        <EditText
+            android:id="@+id/set_tts"
+            style="@style/SettingsInput"
+            android:hint="@string/settings_tts_hint"
+            android:inputType="text" />
+
+        <TextView
+            style="@style/SettingsLabel"
+            android:text="@string/settings_voice" />
+
+        <EditText
+            android:id="@+id/set_voice"
+            style="@style/SettingsInput"
+            android:hint="@string/settings_voice_hint"
+            android:inputType="text" />
+
+        <CheckBox
+            android:id="@+id/set_barge_in"
+            style="@style/SettingsCheck"
+            android:text="@string/settings_barge_in" />
+
+        <CheckBox
+            android:id="@+id/set_save_audio"
+            style="@style/SettingsCheck"
+            android:text="@string/settings_save_audio" />
+
+        <CheckBox
+            android:id="@+id/set_keep_history"
+            style="@style/SettingsCheck"
+            android:text="@string/settings_keep_history" />
+
+        <Button
+            android:id="@+id/btn_save_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/btn_save" />
+
+        <Button
+            android:id="@+id/btn_export_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_export_all" />
+    </LinearLayout>
+</ScrollView>

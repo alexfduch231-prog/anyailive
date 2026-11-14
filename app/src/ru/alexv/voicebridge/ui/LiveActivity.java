@@ -14,6 +14,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,11 +24,13 @@ import ru.alexv.voicebridge.data.ChatStore;
 import ru.alexv.voicebridge.data.Model;
 import ru.alexv.voicebridge.data.ModelsStore;
 import ru.alexv.voicebridge.data.SecretStore;
+import ru.alexv.voicebridge.data.SettingsStore;
 import ru.alexv.voicebridge.voice.AudioIn;
 import ru.alexv.voicebridge.voice.AudioOut;
 import ru.alexv.voicebridge.voice.LiveEngineGemini;
 import ru.alexv.voicebridge.voice.LiveEngineOpenAI;
 import ru.alexv.voicebridge.voice.VoiceEngine;
+import ru.alexv.voicebridge.voice.Wav;
 
 /**
  * Живой голос: микрофон льётся в движок потоком, ответ звучит сразу, экран показывает субтитры.
@@ -61,6 +65,12 @@ public class LiveActivity extends Activity {
     private volatile boolean running;
     private boolean duplex;
     private int lastState = VoiceEngine.IDLE;
+
+    /** Писать ли аудио реплик модели в wav (настройка). */
+    private boolean saveAudio;
+
+    /** Накопитель PCM текущей реплики модели, если запись включена. */
+    private ByteArrayOutputStream clip;
 
     private final StringBuilder heard = new StringBuilder();
     private final StringBuilder said = new StringBuilder();
@@ -189,6 +199,8 @@ public class LiveActivity extends Activity {
         if (!duplex) {
             toast(getString(R.string.live_half_duplex));
         }
+        saveAudio = new SettingsStore(this).getBool(SettingsStore.SAVE_AUDIO, false);
+        clip = saveAudio ? new ByteArrayOutputStream() : null;
         mic = new AudioIn(AudioIn.SAMPLE_RATE);
         running = true;
         engine.start(new EngineCallback());
@@ -290,9 +302,72 @@ public class LiveActivity extends Activity {
     }
 
     private void play(byte[] pcm) {
+        if (pcm == null || pcm.length == 0) {
+            return;
+        }
         AudioOut o = out;
-        if (o != null && pcm != null && pcm.length > 0) {
+        if (o != null) {
             o.write(pcm, pcm.length);
+        }
+        ByteArrayOutputStream c = clip;
+        if (c != null) {
+            c.write(pcm, 0, pcm.length);
+        }
+    }
+
+    /** Реплика пользователя: пишем одной строкой и чистим субтитр. */
+    private void persistUser(String text) {
+        final String clean = text == null ? "" : text.trim();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                heard.setLength(0);
+                userText.setText("");
+            }
+        });
+        if (clean.length() > 0) {
+            store.addMessage(chat.id, "user", clean);
+        }
+    }
+
+    /** Реплика модели: пишем одной строкой, аудио — в wav рядом с сообщением. */
+    private void persistAssistant(String text) {
+        final String clean = text == null ? "" : text.trim();
+        String path = saveClip();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                said.setLength(0);
+                aiText.setText("");
+            }
+        });
+        if (clean.length() == 0) {
+            return;
+        }
+        store.addMessage(chat.id, "assistant", clean,
+                path == null ? "text" : "voice", path, false);
+    }
+
+    /** Сбрасывает накопленный PCM реплики в wav; null — писать нечего или нельзя. */
+    private String saveClip() {
+        ByteArrayOutputStream c = clip;
+        if (c == null || c.size() == 0) {
+            return null;
+        }
+        byte[] pcm = c.toByteArray();
+        c.reset();
+        try {
+            File dir = new File(getFilesDir(), "audio/" + chat.id);
+            if (!dir.exists() && !dir.mkdirs()) {
+                return null;
+            }
+            File file = new File(dir, System.currentTimeMillis() + ".wav");
+            if (!Wav.writeFile(file, pcm, AudioOut.SAMPLE_RATE, 1)) {
+                return null;
+            }
+            return file.getAbsolutePath();
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
@@ -328,6 +403,9 @@ public class LiveActivity extends Activity {
         void bargeIn() {
             if (out != null) {
                 out.flush();
+            }
+            if (clip != null) {
+                clip.reset();
             }
             micPaused = false;
         }
@@ -392,16 +470,12 @@ public class LiveActivity extends Activity {
 
         @Override
         public void onUserText(final String text) {
-            if (text != null && text.trim().length() > 0) {
-                store.addMessage(chat.id, "user", text.trim());
-            }
+            persistUser(text);
         }
 
         @Override
         public void onAssistantText(final String text) {
-            if (text != null && text.trim().length() > 0) {
-                store.addMessage(chat.id, "assistant", text.trim());
-            }
+            persistAssistant(text);
         }
 
         @Override

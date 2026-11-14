@@ -95,6 +95,12 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(MainActivity.this, ModelsActivity.class));
             }
         });
+        ((Button) findViewById(R.id.btn_settings)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            }
+        });
     }
 
     @Override
@@ -156,7 +162,8 @@ public class MainActivity extends Activity {
     }
 
     private void chatMenu(final ChatStore.Chat c) {
-        String[] actions = new String[]{getString(R.string.rename), getString(R.string.delete)};
+        String[] actions = new String[]{getString(R.string.rename), getString(R.string.export_chat),
+                getString(R.string.delete)};
         new AlertDialog.Builder(this)
                 .setTitle(R.string.chat_actions)
                 .setItems(actions, new DialogInterface.OnClickListener() {
@@ -164,6 +171,8 @@ public class MainActivity extends Activity {
                     public void onClick(DialogInterface d, int which) {
                         if (which == 0) {
                             renameDialog(c);
+                        } else if (which == 1) {
+                            exportChat(c);
                         } else {
                             deleteDialog(c);
                         }
@@ -171,6 +180,23 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    /** Экспорт одного чата в JSON через системный диалог сохранения. */
+    private void exportChat(ChatStore.Chat c) {
+        java.util.List<ChatStore.Msg> msgs = chats.messages(c.id);
+        if (msgs.isEmpty()) {
+            Toast.makeText(this, R.string.chat_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String json = Exporter.chatJson(c, msgs);
+        Exporter.beginSave(this, Exporter.fileName(getString(R.string.export_prefix_chat)), json);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Exporter.finishSave(this, requestCode, resultCode, data);
     }
 
     private void renameDialog(final ChatStore.Chat c) {
