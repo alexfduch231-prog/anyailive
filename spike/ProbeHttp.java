@@ -1,7 +1,7 @@
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import ru.alexv.voicebridge.net.Http;
+import ru.alexv.anyailive.net.Http;
 
 /** Живая проверка Http-слоя на реальном эндпоинте (тот же код, что пойдёт в apk). */
 public class ProbeHttp {

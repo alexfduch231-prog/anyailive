@@ -4,9 +4,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import ru.alexv.voicebridge.data.Model;
-import ru.alexv.voicebridge.voice.LiveEngineGemini;
-import ru.alexv.voicebridge.voice.VoiceEngine;
+import ru.alexv.anyailive.data.Model;
+import ru.alexv.anyailive.voice.LiveEngineGemini;
+import ru.alexv.anyailive.voice.VoiceEngine;
 
 /**
  * Живая проверка LiveEngineGemini на настоящем эндпоинте: setup, ответ аудио, субтитры.

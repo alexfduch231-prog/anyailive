@@ -1,4 +1,4 @@
-# ASCII only. VoiceBridge APK build without Gradle.
+# ASCII only. anyAIlive APK build without Gradle.
 # Pipeline: aapt2 compile -> aapt2 link -> javac -> jar -> d8 -> aapt add -> zipalign -> apksigner
 $ErrorActionPreference = "Continue"
 
@@ -9,7 +9,7 @@ if (-not $env:JAVA_HOME) { throw "Set JAVA_HOME to a JDK (17 or newer; 17 is wha
 $ROOT = $PSScriptRoot
 $APP   = "$ROOT\app"
 $BUILD = "$ROOT\build"
-$OUT   = "$ROOT\voicebridge.apk"
+$OUT   = "$ROOT\anyailive.apk"
 
 # version.txt: two lines, versionCode=<int> and versionName=<string>
 $VC = 1
@@ -93,9 +93,9 @@ Step "keystore"
 $KS = "$ROOT\debug.keystore"
 if (-not (Test-Path $KS)) {
     & "$JDK\keytool.exe" -genkeypair -v -keystore "$KS" `
-        -storepass android -keypass android -alias voicebridge `
+        -storepass android -keypass android -alias anyailive `
         -keyalg RSA -keysize 2048 -validity 10000 `
-        -dname "CN=voicebridge, OU=home, O=home, L=home, S=home, C=RU" 2>&1 | ForEach-Object { "$_" }
+        -dname "CN=anyailive, OU=home, O=home, L=home, S=home, C=RU" 2>&1 | ForEach-Object { "$_" }
     Chk $LASTEXITCODE "keytool"
 } else {
     Write-Host "keystore exists, reuse"

@@ -24,10 +24,10 @@ Write-Host "==> build"
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ROOT "build.ps1")
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
 
-$APK = Join-Path $ROOT "voicebridge.apk"
+$APK = Join-Path $ROOT "anyailive.apk"
 $DIST = Join-Path $ROOT "dist"
 New-Item -ItemType Directory -Force $DIST | Out-Null
-$NAME = "voicebridge-$VN.apk"
+$NAME = "anyailive-$VN.apk"
 $TARGET = Join-Path $DIST $NAME
 Copy-Item -Force $APK $TARGET
 

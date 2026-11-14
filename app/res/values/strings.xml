@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">VoiceBridge</string>
+    <string name="app_name">anyAIlive</string>
     <string name="main_hint">Живой голос на любой модели</string>
 
     <!-- чаты: главный экран -->
@@ -132,8 +132,8 @@
     <string name="settings_saved">Настройки сохранены</string>
     <string name="settings_export_all">Экспортировать все чаты (JSON)</string>
     <string name="export_chat">Экспорт чата</string>
-    <string name="export_prefix_chat">voicebridge-chat</string>
-    <string name="export_prefix_all">voicebridge-chats</string>
+    <string name="export_prefix_chat">anyailive-chat</string>
+    <string name="export_prefix_all">anyailive-chats</string>
     <string name="export_done">Файл сохранён</string>
     <string name="export_failed">Не удалось сохранить файл</string>
     <string name="live_cascade_only">В настройках выбран только каскад — Live выключен</string>

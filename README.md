@@ -1,4 +1,4 @@
-# VoiceBridge
+# anyAIlive
 
 Android-клиент для живого голосового разговора с любой моделью: свой API-ключ, свой base URL,
 никакого сервера посередине. Два голосовых движка в одном приложении:
@@ -35,23 +35,23 @@ $env:JAVA_HOME = "C:\Users\you\java\jdk-17"
 powershell -File build.ps1
 ```
 
-Результат — `voicebridge.apk`, подписанный отладочным ключом `voicebridge` (alias `voicebridge`,
+Результат — `anyailive.apk`, подписанный отладочным ключом `debug.keystore` (alias `anyailive`,
 пароль `android`). Gradle не нужен: сборка идёт напрямую через
 `aapt2 → javac → jar → d8 → zipalign → apksigner`.
 
 Тесты без устройства:
 
 ```powershell
-java -cp "build/classes;app/libs/nv-websocket-client-2.14.jar" ru.alexv.voicebridge.TestMain
+java -cp "build/classes;app/libs/nv-websocket-client-2.14.jar" ru.alexv.anyailive.TestMain
 ```
 
 ## Релиз
 
 ```powershell
-powershell -File release.ps1 -Repo "owner/voicebridge" -Notes "what changed"
+powershell -File release.ps1 -Repo "owner/anyailive" -Notes "what changed"
 ```
 
-Кладёт `dist/voicebridge-<версия>.apk` и `dist/update-manifest.json` (версия, sha256, размер, URL).
+Кладёт `dist/anyailive-<версия>.apk` и `dist/update-manifest.json` (версия, sha256, размер, URL).
 Дальше — тег и релиз на GitHub. Версия живёт в `version.txt`.
 
 ## Как настроить модель

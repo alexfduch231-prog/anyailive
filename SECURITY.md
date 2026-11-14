@@ -3,7 +3,7 @@
 ## Ключи API
 
 - Ключи хранятся только на устройстве, в `SharedPreferences` ("secrets").
-- Сами значения шифруются AES-256-GCM ключом AndroidKeyStore (alias `voicebridge_master`).
+- Сами значения шифруются AES-256-GCM ключом AndroidKeyStore (alias `anyailive_master`).
 - Расшифрованный ключ живёт только в памяти процесса.
 - Ключи уходят только на сервер, который пользователь сам указал в настройках модели (base URL).
 
