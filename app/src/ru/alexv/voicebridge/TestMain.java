@@ -1,5 +1,6 @@
 package ru.alexv.voicebridge;
 
+import ru.alexv.voicebridge.data.Model;
 import ru.alexv.voicebridge.net.SseParser;
 
 /**
@@ -46,12 +47,27 @@ public class TestMain {
         check("sse.doneNoSpace", p.isDone("data:[DONE]"));
     }
 
+    static void modelTests() {
+        section("model");
+        Model m = new Model();
+        m.name = "OpenAI";
+        check("model.toString", "OpenAI".equals(m.toString()));
+        check("model.liveOffByDefault", !m.live());
+        m.liveProtocol = Model.LIVE_GEMINI;
+        check("model.liveOn", m.live());
+        m.liveProtocol = null;
+        check("model.liveNullSafe", !m.live());
+        Model empty = new Model();
+        check("model.emptyToString", "".equals(empty.toString()));
+    }
+
     public static void main(String[] args) {
         section("skeleton");
         check("build.smoke", true);
         check("strings.brand", "VoiceBridge".equals("VoiceBridge"));
 
         sseTests();
+        modelTests();
 
         System.out.println();
         System.out.println(fails == 0 ? ("PASS " + total + " checks") : ("FAILURES " + fails + "/" + total));
