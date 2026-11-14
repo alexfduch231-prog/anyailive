@@ -1,5 +1,7 @@
 package ru.alexv.voicebridge;
 
+import ru.alexv.voicebridge.net.SseParser;
+
 /**
  * Headless-проверки логики: запускается на обычной JVM, без Android.
  * Никаких обращений к android.* здесь быть не должно.
@@ -30,10 +32,26 @@ public class TestMain {
         System.out.println("--- " + name);
     }
 
+    static void sseTests() {
+        section("sse");
+        SseParser p = new SseParser();
+        check("sse.data", "{\"a\":1}".equals(p.feed("data: {\"a\":1}")));
+        check("sse.ignore", p.feed(": keepalive") == null);
+        check("sse.done", p.isDone("data: [DONE]"));
+        check("sse.multiline", "x".equals(p.feed("data: x")));
+        check("sse.empty", p.feed("") == null);
+        check("sse.eventLine", p.feed("event: message") == null);
+        check("sse.donePayload", p.feed("data: [DONE]") == null);
+        check("sse.notDone", !p.isDone("data: {\"a\":1}"));
+        check("sse.doneNoSpace", p.isDone("data:[DONE]"));
+    }
+
     public static void main(String[] args) {
         section("skeleton");
         check("build.smoke", true);
         check("strings.brand", "VoiceBridge".equals("VoiceBridge"));
+
+        sseTests();
 
         System.out.println();
         System.out.println(fails == 0 ? ("PASS " + total + " checks") : ("FAILURES " + fails + "/" + total));
