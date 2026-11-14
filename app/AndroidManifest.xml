@@ -21,5 +21,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.ModelsActivity"
+            android:exported="false"
+            android:label="@string/btn_models" />
+
+        <activity
+            android:name=".ui.ModelEditActivity"
+            android:exported="false"
+            android:label="@string/edit_title_edit"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.ChatActivity"
+            android:exported="false"
+            android:label="@string/chat_actions"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

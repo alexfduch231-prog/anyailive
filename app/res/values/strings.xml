@@ -2,4 +2,91 @@
 <resources>
     <string name="app_name">VoiceBridge</string>
     <string name="main_hint">Живой голос на любой модели</string>
+
+    <!-- чаты: главный экран -->
+    <string name="chats_empty">Пока пусто.\nДобавьте модель: имя, адрес API, ключ — и начните чат.</string>
+    <string name="btn_new_chat">Новый чат</string>
+    <string name="btn_models">Модели</string>
+    <string name="chat_untitled">Без названия</string>
+    <string name="choose_model">Выберите модель</string>
+    <string name="no_models">Сначала добавьте модель</string>
+    <string name="chat_actions">Чат</string>
+    <string name="rename">Переименовать</string>
+    <string name="delete">Удалить</string>
+    <string name="cancel">Отмена</string>
+    <string name="rename_chat_title">Название чата</string>
+    <string name="delete_chat_confirm">Удалить этот чат вместе с сообщениями?</string>
+    <string name="chat_meta">%1$s · %2$s</string>
+
+    <!-- модели -->
+    <string name="models_empty">Моделей пока нет.\nНажмите «Добавить»: имя, адрес API, ключ.</string>
+    <string name="btn_add_model">Добавить</string>
+    <string name="live_badge">LIVE</string>
+    <string name="model_no_check">не проверялась</string>
+    <string name="model_actions">Модель</string>
+    <string name="check_chat">Проверить чат</string>
+    <string name="check_gemini">Проверить ключ Gemini</string>
+    <string name="check_realtime">Проверить realtime</string>
+    <string name="checking">Проверяю…</string>
+    <string name="check_result">%1$s</string>
+    <string name="delete_model_confirm">Удалить модель? Ключ из хранилища тоже удалится.</string>
+
+    <!-- редактирование модели -->
+    <string name="edit_title_new">Новая модель</string>
+    <string name="edit_title_edit">Модель</string>
+    <string name="field_name">Имя</string>
+    <string name="field_base_url">Base URL</string>
+    <string name="hint_base_url">https://api.openai.com/v1</string>
+    <string name="field_model_id">ID модели</string>
+    <string name="hint_model_id">gpt-4o, google/gemini-2.5-flash</string>
+    <string name="field_api_key">API-ключ</string>
+    <string name="hint_api_key">оставьте пустым, чтобы не менять</string>
+    <string name="field_live_protocol">Live-протокол</string>
+    <string name="field_live_url">Live URL</string>
+    <string name="field_live_model">Live-модель</string>
+    <string name="hint_optional">необязательно</string>
+    <string name="field_voice">Голос</string>
+    <string name="hint_voice">alloy, Puck</string>
+    <string name="btn_save">Сохранить</string>
+    <string name="need_name">Укажите имя модели</string>
+    <string name="need_base_url">Укажите адрес API (Base URL)</string>
+    <string name="need_model_id">Укажите ID модели</string>
+    <string name="saved">Сохранено</string>
+    <string name="save_failed">Не удалось сохранить модель</string>
+    <string name="no_live_protocol">У модели не выбран Live-протокол</string>
+    <string name="live_none">Нет</string>
+    <string name="live_openai">OpenAI Realtime</string>
+    <string name="live_gemini">Gemini Live</string>
+
+    <!-- чат -->
+    <string name="chat_hint">Сообщение…</string>
+    <string name="btn_send">Отправить</string>
+    <string name="btn_mic">Микрофон</string>
+    <string name="btn_live">Live</string>
+    <string name="later">появится позже</string>
+    <string name="chat_no_model">Модель чата не найдена — выберите модель в каталоге</string>
+    <string name="chat_streaming">Ждём ответа…</string>
+    <string name="chat_error">Ошибка: %1$s</string>
+    <string name="chat_empty">Напишите первое сообщение</string>
+    <string name="assistant_role">Модель</string>
+    <string name="you_role">Вы</string>
+
+    <string-array name="live_protocols">
+        <item>@string/live_none</item>
+        <item>@string/live_openai</item>
+        <item>@string/live_gemini</item>
+    </string-array>
+
+    <!-- Каскад: системные API и HTTP (voice/CascadeSystem, voice/CascadeHttp) -->
+    <string name="voice_stt_unavailable">Распознавание речи недоступно на этом устройстве</string>
+    <string name="voice_tts_unavailable">Синтез речи недоступен на этом устройстве</string>
+    <string name="voice_no_mic_permission">Нет разрешения на микрофон: включите его в настройках приложения</string>
+    <string name="voice_mic_busy">Микрофон не работает: устройство занято другим приложением</string>
+    <string name="voice_stt_network">Сервис распознавания недоступен — проверьте интернет</string>
+    <string name="voice_stt_no_endpoint">На сервере нет /audio/transcriptions — распознавание недоступно</string>
+    <string name="voice_bad_key">Сервер не принял ключ распознавания</string>
+    <string name="voice_speaker_failed">Динамик недоступен</string>
+    <string name="voice_no_base_url">У модели не заполнен адрес сервера (baseUrl)</string>
+    <string name="voice_empty_reply">Модель вернула пустой ответ.</string>
+    <string name="voice_no_chat">Чат не подключён — ответить нечем.</string>
 </resources>
