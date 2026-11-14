@@ -1,4 +1,5 @@
 build/
 *.apk
-debug.keystore
+*.apk.idsig
+*.keystore
 app/libs/*.jar
