@@ -5,11 +5,22 @@ $ErrorActionPreference = "Continue"
 $SDK = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA "Android/Sdk" }
 $BT    = "$SDK\build-tools\34.0.0"
 $AJAR  = "$SDK\platforms\android-34\android.jar"
-if (-not $env:JAVA_HOME) { throw "Set JAVA_HOME to JDK 21" }; $JDK = Join-Path $env:JAVA_HOME "bin"
+if (-not $env:JAVA_HOME) { throw "Set JAVA_HOME to a JDK (17 or newer; 17 is what we test with)" }; $JDK = Join-Path $env:JAVA_HOME "bin"
 $ROOT = $PSScriptRoot
 $APP   = "$ROOT\app"
 $BUILD = "$ROOT\build"
 $OUT   = "$ROOT\voicebridge.apk"
+
+# version.txt: two lines, versionCode=<int> and versionName=<string>
+$VC = 1
+$VN = "0.0.0"
+$VFILE = Join-Path $ROOT "version.txt"
+if (Test-Path $VFILE) {
+    foreach ($ln in Get-Content $VFILE) {
+        if ($ln -match "^versionCode=(\d+)") { $VC = [int]$Matches[1] }
+        if ($ln -match "^versionName=(\S+)") { $VN = $Matches[1] }
+    }
+}
 
 $WV = Join-Path $APP "libs\nv-websocket-client-2.14.jar"
 if (-not (Test-Path $WV)) {
@@ -40,6 +51,7 @@ Step "aapt2 link"
 & "$BT\aapt2.exe" link -I "$AJAR" `
     --manifest "$APP\AndroidManifest.xml" `
     --min-sdk-version 24 --target-sdk-version 34 `
+    --version-code $VC --version-name $VN `
     --auto-add-overlay -A "$APP\assets" `
     --java "$BUILD\gen" `
     -o "$BUILD\unaligned.apk" `
