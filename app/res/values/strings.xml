@@ -136,4 +136,5 @@
     <string name="export_prefix_all">voicebridge-chats</string>
     <string name="export_done">Файл сохранён</string>
     <string name="export_failed">Не удалось сохранить файл</string>
+    <string name="live_cascade_only">В настройках выбран только каскад — Live выключен</string>
 </resources>

@@ -262,6 +262,12 @@ public class ChatActivity extends Activity {
             Toast.makeText(this, R.string.chat_no_model, Toast.LENGTH_LONG).show();
             return;
         }
+        ru.alexv.voicebridge.data.SettingsStore settings =
+                new ru.alexv.voicebridge.data.SettingsStore(this);
+        if (VoiceConfig.ENGINE_LIVE.equals(VoiceConfig.engine(settings)) && model.live()) {
+            startActivity(LiveActivity.intent(this, chat.id));
+            return;
+        }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
             return;
@@ -280,14 +286,17 @@ public class ChatActivity extends Activity {
         if (chat == null || model == null || streaming) {
             return;
         }
+        ru.alexv.voicebridge.data.SettingsStore settings =
+                new ru.alexv.voicebridge.data.SettingsStore(this);
+        Model configured = VoiceConfig.apply(settings, model);
         String prompt = getString(R.string.live_system_prompt);
-        String language = getString(R.string.voice_language_default);
-        ChatLink link = new ChatLink(client, model, apiKey);
-        boolean http = model.baseUrl != null && model.baseUrl.length() > 0
-                && model.sttModel != null && model.sttModel.length() > 0;
+        String language = VoiceConfig.language(settings, getString(R.string.voice_language_default));
+        ChatLink link = new ChatLink(client, configured, apiKey);
+        boolean http = configured.baseUrl != null && configured.baseUrl.length() > 0
+                && configured.sttModel != null && configured.sttModel.length() > 0;
         voice = http
-                ? new CascadeHttp(this, model, link, prompt, language)
-                : new CascadeSystem(this, model, link, prompt, language);
+                ? new CascadeHttp(this, configured, link, prompt, language)
+                : new CascadeSystem(this, configured, link, prompt, language);
         setMicLabel(R.string.voice_mode_stop);
         voice.start(new VoiceEngine.Callback() {
             @Override

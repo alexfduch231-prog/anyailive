@@ -31,6 +31,26 @@ public class Model {
         return liveProtocol != null && liveProtocol.length() > 0;
     }
 
+    /** Копия записи: настройки голоса накладываются на модель, не задевая каталог. */
+    public Model copy() {
+        Model m = new Model();
+        m.id = id;
+        m.name = name;
+        m.baseUrl = baseUrl;
+        m.modelId = modelId;
+        m.keyRef = keyRef;
+        m.liveProtocol = liveProtocol;
+        m.liveUrl = liveUrl;
+        m.liveModelId = liveModelId;
+        m.voice = voice;
+        m.sttModel = sttModel;
+        m.ttsModel = ttsModel;
+        m.headers = headers;
+        m.lastCheck = lastCheck;
+        m.createdAt = createdAt;
+        return m;
+    }
+
     @Override
     public String toString() {
         return name == null ? "" : name;

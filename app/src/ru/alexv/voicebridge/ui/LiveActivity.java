@@ -175,14 +175,21 @@ public class LiveActivity extends Activity {
     }
 
     private void connect() {
-        String protocol = model.liveProtocol == null ? Model.LIVE_NONE : model.liveProtocol;
+        SettingsStore settings = new SettingsStore(this);
+        if (VoiceConfig.ENGINE_CASCADE.equals(VoiceConfig.engine(settings))) {
+            toast(getString(R.string.live_cascade_only));
+            finish();
+            return;
+        }
+        Model configured = VoiceConfig.apply(settings, model);
+        String protocol = configured.liveProtocol == null ? Model.LIVE_NONE : configured.liveProtocol;
         String prompt = getString(R.string.live_system_prompt);
         if (Model.LIVE_OPENAI.equals(protocol)) {
-            LiveEngineOpenAI e = new LiveEngineOpenAI(model, apiKey, prompt);
+            LiveEngineOpenAI e = new LiveEngineOpenAI(configured, apiKey, prompt);
             e.setSink(new OpenAiSink());
             engine = e;
         } else if (Model.LIVE_GEMINI.equals(protocol)) {
-            LiveEngineGemini g = new LiveEngineGemini(model, apiKey, prompt);
+            LiveEngineGemini g = new LiveEngineGemini(configured, apiKey, prompt);
             g.setSink(new GeminiSink());
             engine = g;
         } else {
@@ -199,7 +206,7 @@ public class LiveActivity extends Activity {
         if (!duplex) {
             toast(getString(R.string.live_half_duplex));
         }
-        saveAudio = new SettingsStore(this).getBool(SettingsStore.SAVE_AUDIO, false);
+        saveAudio = settings.getBool(SettingsStore.SAVE_AUDIO, false);
         clip = saveAudio ? new ByteArrayOutputStream() : null;
         mic = new AudioIn(AudioIn.SAMPLE_RATE);
         running = true;
