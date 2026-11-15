@@ -3,6 +3,26 @@
 Device: RMO-NX1, Android 13, ADB 192.168.3.111:37383.
 Package: ru.alexv.anyailive. Development build 0.1.0.
 
+## Live screen + real-time waveform — 2026-11-15
+
+- New Gemini-Live-style Live screen: fullscreen dark, centered 30sp title, five-bar
+  WaveformView (ui/WaveformView.java), status text, subtitles and pill controls at the
+  bottom. All previous view ids preserved; legacy live_circle hidden (gone).
+- Waveform is audio-reactive: WaveformView.push(rms) from MicListener.onPcm (user voice)
+  and LiveActivity.play (model voice), RMS of PCM16 normalized 0..1 with a boost for
+  quiet speech; idle state is a slow breathing animation, no timers outside onDraw.
+- Device smoke test with spike/realtime_fixture.py (stdlib RFC6455 OpenAI-Realtime
+  fixture, ws://127.0.0.1:18765 over adb reverse): session.update accepted, mic PCM
+  streamed as input_audio_buffer.append continuously, response.output_audio.delta
+  (24 kHz PCM16, breathing amplitude) played and drove the waveform from idle dots to
+  tall uneven bars while state showed Говорю; transcript deltas rendered as subtitles.
+  Screenshots spike/live-fx-3.png (idle) and spike/live-fx2-2.png (speaking).
+- NOTE: a dummy key `dummy-live-test-key` was saved on the mock DeviceTest model to pass
+  the API-key gate; DeviceTest still points to loopback fixtures and is not a working
+  provider configuration.
+- Pitfall recorded: Windows allows double-binding the fixture port; zombie python
+  fixtures silently stole connections. taskkill stale PIDs before restarting the fixture.
+
 ## Observed on handset
 
 - APK installs and launches.

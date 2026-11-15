@@ -54,6 +54,7 @@ public class LiveActivity extends Activity {
 
     private TextView title, stateText, userText, aiText;
     private View circle;
+    private WaveformView wave;
     private EditText input;
     private Button send, interrupt, hangup;
 
@@ -97,6 +98,10 @@ public class LiveActivity extends Activity {
         userText = (TextView) findViewById(R.id.live_user);
         aiText = (TextView) findViewById(R.id.live_ai);
         circle = findViewById(R.id.live_circle);
+        wave = (WaveformView) findViewById(R.id.live_wave);
+        if (wave != null) {
+            wave.setBarColor(getResources().getColor(R.color.accent));
+        }
         input = (EditText) findViewById(R.id.live_input);
         send = (Button) findViewById(R.id.btn_live_send);
         interrupt = (Button) findViewById(R.id.btn_live_interrupt);
@@ -339,6 +344,10 @@ public class LiveActivity extends Activity {
         if (o != null) {
             o.write(pcm, pcm.length);
         }
+        WaveformView w = wave; // волна дрожит от голоса модели
+        if (w != null) {
+            w.push(rms(pcm, pcm.length));
+        }
         ByteArrayOutputStream c = clip;
         if (c != null) {
             synchronized (c) {
@@ -410,6 +419,23 @@ public class LiveActivity extends Activity {
         }
     }
 
+    /** RMS куска PCM16 (little-endian), нормированный в 0..1. */
+    private static float rms(byte[] data, int len) {
+        int n = (len / 4) * 2; // чётное число сэмплов, шаг по 4 байта (2 сэмпла)
+        if (n <= 0) {
+            return 0f;
+        }
+        long acc = 0;
+        for (int i = 0; i < n; i += 4) {
+            int s1 = (short) ((data[i] & 0xFF) | (data[i + 1] << 8));
+            int s2 = (short) ((data[i + 2] & 0xFF) | (data[i + 3] << 8));
+            acc += (long) s1 * s1 + (long) s2 * s2;
+        }
+        double mean = acc / (double) n;
+        double r = Math.sqrt(mean) / 32768.0;
+        return (float) Math.min(1.0, r * 2.5); // лёгкий буст, чтобы тише звучащие фразы тоже двигали волну
+    }
+
     private void toast(final String msg) {
         runOnUiThread(new Runnable() {
             @Override public void run() {
@@ -422,6 +448,10 @@ public class LiveActivity extends Activity {
     private class MicListener implements AudioIn.Listener {
         @Override
         public void onPcm(byte[] data, int len) {
+            WaveformView w = wave; // волна дрожит и от голоса пользователя
+            if (w != null && len > 0) {
+                w.push(rms(data, len));
+            }
             VoiceEngine e = engine;
             AudioOut playback = out;
             if (e == null || !running || micPaused || len <= 0
