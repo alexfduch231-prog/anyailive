@@ -88,6 +88,7 @@ public class TestMain {
         ru.alexv.anyailive.tests.TtsRoutingPolicyTests.main(new String[0]);
         ru.alexv.anyailive.tests.PendingSpeechQueueTests.main(new String[0]);
         ru.alexv.anyailive.tests.TranscriptionBodyTests.main(new String[0]);
+        ru.alexv.anyailive.voice.SystemTtsVoicePolicyTests.main(new String[0]);
         ru.alexv.anyailive.tests.ThemeTests.run();
         ru.alexv.anyailive.tests.AppUpdateTests.run();
 

@@ -85,13 +85,7 @@ public final class SystemTts {
 
     /** Language-aware matching: requested ru also accepts ru-RU, but never en-US. */
     public static boolean voiceLocaleCompatible(String voiceLocaleTag, String requestedLanguageTag) {
-        if (voiceLocaleTag == null || voiceLocaleTag.length() == 0
-                || requestedLanguageTag == null || requestedLanguageTag.length() == 0) return false;
-        Locale voice = Locale.forLanguageTag(voiceLocaleTag.replace('_', '-'));
-        Locale requested = Locale.forLanguageTag(requestedLanguageTag.replace('_', '-'));
-        String voiceLanguage = voice.getLanguage();
-        String requestedLanguage = requested.getLanguage();
-        return voiceLanguage.length() > 0 && voiceLanguage.equalsIgnoreCase(requestedLanguage);
+        return VoiceLocalePolicy.compatible(voiceLocaleTag, requestedLanguageTag);
     }
 
 
