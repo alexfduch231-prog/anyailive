@@ -26,7 +26,7 @@ import ru.alexv.anyailive.data.SecretStore;
  * Каталог моделей: список, добавление, правка по тапу, проверки по долгому тапу.
  * Ключи лежат в {@link SecretStore} под {@code model_<id>}, в самой модели только keyRef.
  */
-public class ModelsActivity extends Activity {
+public class ModelsActivity extends BaseActivity {
 
     /** id модели, которую надо открыть в редакторе (0 — новая). */
     public static final String EXTRA_MODEL_ID = "model_id";
@@ -40,7 +40,6 @@ public class ModelsActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_models);
         store = new ModelsStore(this);

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">anyAIlive</string>
+    <string name="main_hint">Live voice on any model</string>
+
+    <!-- chats: main screen -->
+    <string name="chats_empty">Nothing here yet.\nAdd a model: name, API address, key — and start chatting.</string>
+    <string name="btn_new_chat">New chat</string>
+    <string name="icon_menu">☰</string>
+    <string name="icon_compose">✎</string>
+    <string name="icon_live">◉ Live</string>
+    <string name="icon_mic">🎙</string>
+    <string name="icon_send">➤</string>
+    <string name="drawer_open">Open chat history</string>
+    <string name="drawer_title">Chat history</string>
+    <string name="theme_row">Theme</string>
+    <string name="choose_theme">Choose a theme</string>
+    <string name="lang_row">App language</string>
+    <string name="choose_lang">Interface language</string>
+    <string name="lang_auto">Follow system</string>
+    <string name="lang_ru">Русский</string>
+    <string name="lang_en">English</string>
+    <string name="version_row">Version</string>
+    <string-array name="theme_labels">
+        <item>Dark (Gemini)</item>
+        <item>Light</item>
+        <item>Midnight</item>
+        <item>Ash</item>
+        <item>Cyberpunk</item>
+        <item>Matrix</item>
+        <item>Sunset</item>
+        <item>Aurora</item>
+    </string-array>
+    <string name="btn_models">Models</string>
+    <string name="chat_untitled">Untitled</string>
+    <string name="choose_model">Choose a model</string>
+    <string name="no_models">Add a model first</string>
+    <string name="chat_actions">Chat</string>
+    <string name="rename">Rename</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="rename_chat_title">Chat name</string>
+    <string name="delete_chat_confirm">Delete this chat along with its messages?</string>
+    <string name="chat_meta">%1$s · %2$s</string>
+
+    <!-- models -->
+    <string name="models_empty">No models yet.\nTap "Add": name, API address, key.</string>
+    <string name="btn_add_model">Add</string>
+    <string name="live_badge">LIVE</string>
+    <string name="model_no_check">not verified</string>
+    <string name="model_actions">Model</string>
+    <string name="check_chat">Test chat</string>
+    <string name="check_gemini">Test Gemini key</string>
+    <string name="check_realtime">Test realtime</string>
+    <string name="checking">Checking…</string>
+    <string name="check_result">%1$s</string>
+    <string name="delete_model_confirm">Delete the model? The key will be removed from storage too.</string>
+
+    <!-- model editor -->
+    <string name="edit_title_new">New model</string>
+    <string name="edit_title_edit">Model</string>
+    <string name="field_name">Name</string>
+    <string name="field_base_url">Base URL</string>
+    <string name="hint_base_url">https://api.openai.com/v1</string>
+    <string name="field_model_id">Model ID</string>
+    <string name="hint_model_id">gpt-4o, google/gemini-2.5-flash</string>
+    <string name="field_api_key">API key</string>
+    <string name="hint_api_key">leave empty to keep the current one</string>
+    <string name="field_live_protocol">Live protocol</string>
+    <string name="field_live_url">Live URL</string>
+    <string name="field_live_model">Live model</string>
+    <string name="hint_optional">optional</string>
+    <string name="field_voice">Voice</string>
+    <string name="hint_voice">alloy, Puck</string>
+    <string name="btn_save">Save</string>
+    <string name="need_name">Enter the model name</string>
+    <string name="need_base_url">Enter the API address (Base URL)</string>
+    <string name="need_model_id">Enter the model ID</string>
+    <string name="saved">Saved</string>
+    <string name="save_failed">Failed to save the model</string>
+    <string name="no_live_protocol">No live protocol selected for the model</string>
+    <string name="live_none">None</string>
+    <string name="live_openai">OpenAI Realtime</string>
+    <string name="live_gemini">Gemini Live</string>
+
+    <!-- chat -->
+    <string name="chat_hint">Message…</string>
+    <string name="btn_send">Send</string>
+    <string name="btn_mic">Microphone</string>
+    <string name="btn_live">Live</string>
+    <string name="later">coming later</string>
+    <string name="chat_no_model">Chat model not found — pick a model in the catalog</string>
+    <string name="chat_streaming">Waiting for reply…</string>
+    <string name="chat_error">Error: %1$s</string>
+    <string name="chat_empty">Send the first message</string>
+    <string name="assistant_role">Model</string>
+    <string name="you_role">You</string>
+
+    <string-array name="live_protocols">
+        <item>@string/live_none</item>
+        <item>@string/live_openai</item>
+        <item>@string/live_gemini</item>
+    </string-array>
+
+    <!-- Cascade: system APIs and HTTP (voice/CascadeSystem, voice/CascadeHttp) -->
+    <string name="voice_stt_unavailable">Speech recognition is not available on this device</string>
+    <string name="voice_tts_unavailable">Speech synthesis is not available on this device</string>
+    <string name="voice_no_mic_permission">No microphone permission: enable it in the app settings</string>
+    <string name="voice_mic_busy">Microphone unavailable: the device is busy with another app</string>
+    <string name="voice_stt_network">Recognition service unreachable — check the internet</string>
+    <string name="voice_stt_no_endpoint">The server has no /audio/transcriptions — recognition unavailable</string>
+    <string name="voice_bad_key">The server rejected the recognition key</string>
+    <string name="voice_speaker_failed">Speaker unavailable</string>
+    <string name="voice_no_base_url">The model has no server address (baseUrl)</string>
+    <string name="voice_empty_reply">The model returned an empty reply.</string>
+    <string name="voice_no_chat">No chat attached — nothing to answer with.</string>
+
+    <!-- Live screen (ui/LiveActivity) -->
+    <string name="live_title">Live voice</string>
+    <string name="live_connecting">Connecting\u2026</string>
+    <string name="live_listening">Listening</string>
+    <string name="live_thinking">Thinking</string>
+    <string name="live_speaking">Speaking</string>
+    <string name="live_idle">Ready</string>
+    <string name="live_no_live">This model cannot do Live — enable the protocol in the model settings</string>
+    <string name="live_mic_denied">No microphone, no live voice</string>
+    <string name="live_no_model">Chat not found or has no model</string>
+    <string name="live_interrupt">Interrupt</string>
+    <string name="live_hangup">End</string>
+    <string name="live_input_hint">Type instead</string>
+    <string name="live_half_duplex">No echo cancellation: muting the mic while the model speaks</string>
+    <string name="live_system_prompt">You are a voice companion. Answer briefly, one or two sentences.</string>
+    <string name="voice_mode_start">Mic</string>
+    <string name="voice_mode_stop">Stop</string>
+    <string name="voice_mode_listening">Listening\u2026</string>
+    <string name="voice_mode_thinking">Thinking\u2026</string>
+    <string name="voice_mode_speaking">Speaking\u2026</string>
+    <string name="voice_language_default">ru-RU</string>
+    <string name="btn_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_hint">Model, key and server address live in "Models". This is about talking.</string>
+    <string name="settings_engine">Voice engine</string>
+    <string name="engine_auto">Auto: Live if the model supports it</string>
+    <string name="engine_live">Live only</string>
+    <string name="engine_cascade">Cascade only (STT → chat → TTS)</string>
+    <string name="settings_language">Recognition and synthesis language</string>
+    <string name="settings_language_hint">ru-RU</string>
+    <string name="settings_stt">Recognition model (HTTP)</string>
+    <string name="settings_stt_hint">e.g. whisper-1</string>
+    <string name="settings_tts">Speech model (HTTP)</string>
+    <string name="settings_tts_hint">e.g. tts-1</string>
+    <string name="settings_voice">Speaking voice</string>
+    <string name="settings_voice_hint">e.g. alloy</string>
+    <string name="settings_barge_in">Allow voice interruptions</string>
+    <string name="settings_save_audio">Save reply audio</string>
+    <string name="settings_keep_history">Keep chat history</string>
+    <string name="settings_saved">Settings saved</string>
+    <string name="settings_export_all">Export all chats (JSON)</string>
+    <string name="export_chat">Export chat</string>
+    <string name="export_prefix_chat">anyailive-chat</string>
+    <string name="export_prefix_all">anyailive-chats</string>
+    <string name="export_done">File saved</string>
+    <string name="export_failed">Failed to save the file</string>
+    <string name="live_cascade_only">Cascade-only is selected in settings — Live is off</string>
+</resources>

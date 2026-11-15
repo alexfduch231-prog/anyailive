@@ -23,7 +23,7 @@ import ru.alexv.anyailive.data.SecretStore;
  * Создание и правка модели. Сам ключ в базу не попадает: в модели только {@code keyRef},
  * значение — в {@link SecretStore}. Пустое поле ключа при сохранении = оставить прежний.
  */
-public class ModelEditActivity extends Activity {
+public class ModelEditActivity extends BaseActivity {
 
     private static final String[] LIVE_VALUES = {
             Model.LIVE_NONE, Model.LIVE_OPENAI, Model.LIVE_GEMINI
@@ -51,7 +51,6 @@ public class ModelEditActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_model_edit);
         store = new ModelsStore(this);

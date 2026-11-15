@@ -13,7 +13,9 @@ public class SettingsStore {
     public static final String VOICE = "voice";
     public static final String LANGUAGE = "language";
     public static final String BARGE_IN = "barge_in";          // "1" | "0"
-    public static final String THEME = "theme";                // dark | light | system
+    public static final String THEME = "theme";                // ключ темы из ui/Themes
+    public static final String APP_LANG = "app_lang";          // auto | ru | en
+    public static final String LANG_AUTO = "auto";
     public static final String KEEP_HISTORY = "keep_history";  // "1" | "0"
     public static final String SAVE_AUDIO = "save_audio";      // "1" | "0"
 

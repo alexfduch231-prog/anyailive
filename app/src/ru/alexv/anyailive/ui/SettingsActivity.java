@@ -22,7 +22,7 @@ import ru.alexv.anyailive.data.SettingsStore;
  * Настройки голоса: движок, язык, модели распознавания и озвучки, голос,
  * перебивание, запись аудио. Здесь же экспорт всей переписки в JSON.
  */
-public class SettingsActivity extends Activity {
+public class SettingsActivity extends BaseActivity {
 
     /** Значения движка в том же порядке, что и подписи в списке. */
     private static final String[] ENGINES = {"auto", "live", "cascade"};
@@ -41,9 +41,28 @@ public class SettingsActivity extends Activity {
     private CheckBox saveAudio;
     private CheckBox keepHistory;
 
+    /** Индекс значения в массиве; -1 -> 0 (первый элемент как дефолт). */
+    private static int indexOf(String[] values, String v) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(v)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /** Локализованное имя темы по ключу: i-му ключу Themes соответствует i-я строка ресурса. */
+    private static String themeLabel(String key, String[] labels) {
+        for (int i = 0; i < Themes.count(); i++) {
+            if (Themes.keyAt(i).equals(key)) {
+                return labels[Math.min(i, labels.length - 1)];
+            }
+        }
+        return labels[0];
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
         settings = new SettingsStore(this);
@@ -58,14 +77,15 @@ public class SettingsActivity extends Activity {
         keepHistory = (CheckBox) findViewById(R.id.set_keep_history);
 
         final TextView themeRow = (TextView) findViewById(R.id.set_theme);
-        themeRow.setText(getString(R.string.theme_row) + ": " + Themes.labelFor(settings.get(SettingsStore.THEME, Themes.DEFAULT)));
+        final String[] themeLabels = getResources().getStringArray(R.array.theme_labels);
+        themeRow.setText(getString(R.string.theme_row) + ": " + themeLabel(settings.get(SettingsStore.THEME, Themes.DEFAULT), themeLabels));
         themeRow.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 final String current = settings.get(SettingsStore.THEME, Themes.DEFAULT);
                 new android.app.AlertDialog.Builder(SettingsActivity.this)
                         .setTitle(R.string.choose_theme)
-                        .setSingleChoiceItems(Themes.LABELS, java.util.Arrays.asList(Themes.LABELS).indexOf(Themes.labelFor(current)),
+                        .setSingleChoiceItems(themeLabels, indexOf(themeLabels, themeLabel(current, themeLabels)),
                                 new android.content.DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(android.content.DialogInterface d, int which) {
@@ -78,6 +98,41 @@ public class SettingsActivity extends Activity {
                         .show();
             }
         });
+
+        // Язык интерфейса: авто / русский / английский.
+        final String[] langLabels = {getString(R.string.lang_auto), getString(R.string.lang_ru), getString(R.string.lang_en)};
+        final String[] langValues = {SettingsStore.LANG_AUTO, "ru", "en"};
+        final TextView langRow = (TextView) findViewById(R.id.set_lang);
+        String curLang = settings.get(SettingsStore.APP_LANG, SettingsStore.LANG_AUTO);
+        langRow.setText(getString(R.string.lang_row) + ": " + langLabels[indexOf(langValues, curLang)]);
+        langRow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String cur = settings.get(SettingsStore.APP_LANG, SettingsStore.LANG_AUTO);
+                new android.app.AlertDialog.Builder(SettingsActivity.this)
+                        .setTitle(R.string.choose_lang)
+                        .setSingleChoiceItems(langLabels, indexOf(langValues, cur),
+                                new android.content.DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(android.content.DialogInterface d, int which) {
+                                        d.dismiss();
+                                        settings.set(SettingsStore.APP_LANG, langValues[which]);
+                                        recreate();
+                                    }
+                                })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show();
+            }
+        });
+
+        // Версия приложения — из сборки (version.txt).
+        TextView versionRow = (TextView) findViewById(R.id.set_version);
+        try {
+            android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+            versionRow.setText(getString(R.string.version_row) + ": " + pi.versionName + " (" + pi.versionCode + ")");
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            versionRow.setText(getString(R.string.version_row) + ": -");
+        }
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.item_spinner,
                 new String[]{getString(R.string.engine_auto), getString(R.string.engine_live),

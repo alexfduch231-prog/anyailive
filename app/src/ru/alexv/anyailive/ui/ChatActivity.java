@@ -37,7 +37,7 @@ import ru.alexv.anyailive.voice.VoiceEngine;
  * Микрофон включает голосовой каскад (STT -> чат -> TTS) прямо в этом экране,
  * кнопка Live открывает {@link LiveActivity} с нативным realtime-протоколом.
  */
-public class ChatActivity extends Activity {
+public class ChatActivity extends BaseActivity {
 
     /** id чата, который надо открыть. */
     public static final String EXTRA_CHAT_ID = "chat_id";
@@ -94,7 +94,6 @@ public class ChatActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
         store = new ChatStore(this);

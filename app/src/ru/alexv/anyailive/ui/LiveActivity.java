@@ -38,7 +38,7 @@ import ru.alexv.anyailive.voice.Wav;
  * Экран ничего не знает про протоколы: он выбирает движок по флагу модели и перекладывает
  * PCM между {@link AudioIn}, движком и {@link AudioOut}.
  */
-public class LiveActivity extends Activity {
+public class LiveActivity extends BaseActivity {
 
     public static final String EXTRA_CHAT_ID = "chat_id";
     private static final int REQ_MIC = 41;
@@ -86,7 +86,6 @@ public class LiveActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_live);
         store = new ChatStore(this);

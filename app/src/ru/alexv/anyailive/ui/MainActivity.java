@@ -32,7 +32,7 @@ import ru.alexv.anyailive.data.ModelsStore;
  * Главный экран: список чатов, «Новый чат» и «Модели».
  * Долгий тап по чату — переименовать или удалить.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends BaseActivity {
 
     private ChatStore chats;
     private ModelsStore models;
@@ -43,7 +43,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         chats = new ChatStore(this);
