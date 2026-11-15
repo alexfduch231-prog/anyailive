@@ -51,6 +51,7 @@ public final class CascadeHttp implements VoiceEngine {
     private String apiKey = "";
     private String selectedTtsEngine;
     private volatile boolean systemTtsFallback;
+    private volatile boolean bargeIn;
     private final java.util.Set<String> pendingSystemSpeech = new java.util.HashSet<String>();
 
     public CascadeHttp(Context ctx, Model model, CascadeSystem.Chat chat) {
@@ -125,6 +126,8 @@ public final class CascadeHttp implements VoiceEngine {
             stt = null;
             return; // текст ошибки уже ушёл через onError
         }
+        bargeIn = BargeInPolicy.enabled(stt.aecEnabled(),
+                new SettingsStore(ctx).getBool(SettingsStore.BARGE_IN, true));
         setState(LISTENING);
     }
 
@@ -133,6 +136,9 @@ public final class CascadeHttp implements VoiceEngine {
     private final CascadeStt.Listener mic = new CascadeStt.Listener() {
         @Override
         public void onSpeechStart() {
+            if (bargeIn && state == SPEAKING) {
+                stopSpeech();
+            }
             setState(LISTENING);
         }
 
@@ -482,7 +488,7 @@ public final class CascadeHttp implements VoiceEngine {
         if (s2 != null) {
             // Полудуплекс: микрофон разбирается только когда действительно слушаем —
             // во время ответа и ожидания модели ассистент не подслушивает сам себя.
-            s2.setPaused(s != LISTENING);
+            s2.setPaused(s == THINKING || (s == SPEAKING && !bargeIn));
         }
         if (state == s) {
             return;

@@ -161,6 +161,10 @@
     <string name="settings_tts_hint">например tts-1</string>
     <string name="settings_voice">Голос озвучки</string>
     <string name="settings_voice_hint">например alloy</string>
+    <string name="settings_tts_engine">Системный TTS-движок</string>
+    <string name="settings_system_voice">Системный голос (только в anyAIlive)</string>
+    <string name="settings_system_voice_default">По умолчанию движка</string>
+    <string name="settings_system_voice_missing">Сохранённый голос недоступен</string>
     <string name="settings_barge_in">Перебивать голосом</string>
     <string name="settings_save_audio">Сохранять аудио реплик</string>
     <string name="settings_keep_history">Хранить историю чатов</string>

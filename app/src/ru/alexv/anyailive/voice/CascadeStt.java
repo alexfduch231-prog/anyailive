@@ -95,6 +95,12 @@ public final class CascadeStt implements AudioIn.Listener {
         return running;
     }
 
+    /** Включён ли аппаратный AEC на текущем захвате. */
+    public boolean aecEnabled() {
+        AudioIn a = in;
+        return a != null && a.aecEnabled();
+    }
+
     /** Включить/выключить полудуплекс (true — микрофон не разбирается). */
     public void setPaused(boolean p) {
         paused = p;

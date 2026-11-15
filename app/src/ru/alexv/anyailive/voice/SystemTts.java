@@ -4,11 +4,13 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.speech.tts.UtteranceProgressListener;
 
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -44,6 +46,54 @@ public final class SystemTts {
 
     /** Ниже этого значения считаем, что файлового режима нет (Android < 5). */
     private static final int MIN_FILE_MODE_SDK = 21;
+
+    public static final String SYSTEM_VOICE_SETTING = "tts_system_voice";
+
+    /** App-local descriptor used by the settings picker; no system setting is changed. */
+    public static final class VoiceInfo {
+        public final String name;
+        public final String locale;
+
+        public VoiceInfo(String name, String locale) {
+            this.name = name == null ? "" : name;
+            this.locale = locale == null ? "" : locale;
+        }
+
+        @Override public String toString() {
+            return name + " — " + locale;
+        }
+    }
+
+    /** Enumerate voices exposed by this engine and retain only voices matching the requested language. */
+    public static List<VoiceInfo> voicesForLanguage(TextToSpeech engine, String languageTag) {
+        List<VoiceInfo> result = new java.util.ArrayList<VoiceInfo>();
+        if (engine == null) return result;
+        try {
+            for (Voice voice : engine.getVoices()) {
+                if (voice == null || voice.getName() == null || voice.getName().length() == 0) continue;
+                Locale locale = voice.getLocale();
+                String localeTag = locale == null ? "" : locale.toLanguageTag();
+                if (voiceLocaleCompatible(localeTag, languageTag)) {
+                    result.add(new VoiceInfo(voice.getName(), localeTag));
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // Some old engines throw while querying voices; the picker then stays empty.
+        }
+        return result;
+    }
+
+    /** Language-aware matching: requested ru also accepts ru-RU, but never en-US. */
+    public static boolean voiceLocaleCompatible(String voiceLocaleTag, String requestedLanguageTag) {
+        if (voiceLocaleTag == null || voiceLocaleTag.length() == 0
+                || requestedLanguageTag == null || requestedLanguageTag.length() == 0) return false;
+        Locale voice = Locale.forLanguageTag(voiceLocaleTag.replace('_', '-'));
+        Locale requested = Locale.forLanguageTag(requestedLanguageTag.replace('_', '-'));
+        String voiceLanguage = voice.getLanguage();
+        String requestedLanguage = requested.getLanguage();
+        return voiceLanguage.length() > 0 && voiceLanguage.equalsIgnoreCase(requestedLanguage);
+    }
+
 
     private final Context ctx;
     private final String language;
@@ -149,6 +199,26 @@ public final class SystemTts {
             int r = tts.setLanguage(locale(language));
             if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
                 tts.setLanguage(Locale.getDefault());
+            }
+            String selectedVoice = new ru.alexv.anyailive.data.SettingsStore(ctx).get(
+                    SYSTEM_VOICE_SETTING, "");
+            if (selectedVoice != null && selectedVoice.length() > 0) {
+                boolean applied = false;
+                try {
+                    for (Voice candidate : tts.getVoices()) {
+                        if (candidate != null && selectedVoice.equals(candidate.getName())
+                                && voiceLocaleCompatible(candidate.getLocale() == null ? "" : candidate.getLocale().toLanguageTag(), language)) {
+                            tts.setVoice(candidate);
+                            applied = true;
+                            break;
+                        }
+                    }
+                } catch (RuntimeException ignored) {
+                    // Missing/unavailable voice: keep the engine's language default.
+                }
+                if (!applied) {
+                    // Keep the app-local selection so SettingsActivity can report it as missing.
+                }
             }
             tts.setSpeechRate(1.0f);
         } catch (RuntimeException e) {

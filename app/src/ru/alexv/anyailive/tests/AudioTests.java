@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import ru.alexv.anyailive.voice.BargeInPolicy;
 import ru.alexv.anyailive.voice.CascadeHttp;
 import ru.alexv.anyailive.voice.CascadeStt;
 import ru.alexv.anyailive.voice.HttpWire;
@@ -35,6 +36,7 @@ public final class AudioTests {
         wavTests();
         sentencesTests();
         cascadeWireTests();
+        bargeInPolicyTests();
         System.out.println("audio: ok " + passed + ", fail " + failed);
         if (failed != 0) throw new AssertionError("Audio regression failures: " + failed);
     }
@@ -43,7 +45,17 @@ public final class AudioTests {
         run();
     }
 
-    // ----------------------------------------------------------- Resampler
+    private static void bargeInPolicyTests() {
+        check("BargeInPolicy: AEC + enabled => duplex",
+                BargeInPolicy.captureDuringSpeech(true, true));
+        check("BargeInPolicy: no AEC => half-duplex",
+                !BargeInPolicy.captureDuringSpeech(false, true));
+        check("BargeInPolicy: disabled => half-duplex",
+                !BargeInPolicy.captureDuringSpeech(true, false));
+        check("BargeInPolicy: enabled mirrors safe predicate",
+                BargeInPolicy.enabled(true, true) && !BargeInPolicy.enabled(false, true));
+    }
+
 
     private static void resamplerTests() {
         byte[] zeros = new byte[320];

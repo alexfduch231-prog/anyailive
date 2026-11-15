@@ -384,6 +384,20 @@ public final class CascadeSystem implements VoiceEngine {
         if (out != null) {
             out.flush();
         }
+        if (running) {
+            setState(LISTENING);
+            final SystemStt s = stt;
+            if (s != null) {
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (running && stt == s) {
+                            s.listen();
+                        }
+                    }
+                });
+            }
+        }
     }
 
     private void finishTurn() {

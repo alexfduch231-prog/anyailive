@@ -34,7 +34,10 @@ public class SettingsActivity extends BaseActivity {
     private Spinner engine;
     private Spinner sttEngine;
     private Spinner ttsEngine;
+    private Spinner systemVoice;
     private final java.util.ArrayList<String> ttsPackages = new java.util.ArrayList<String>();
+    private final java.util.ArrayList<String> systemVoiceNames = new java.util.ArrayList<String>();
+    private final java.util.ArrayList<String> systemVoiceLocales = new java.util.ArrayList<String>();
     private EditText language;
     private EditText stt;
     private EditText tts;
@@ -71,6 +74,11 @@ public class SettingsActivity extends BaseActivity {
 
         engine = (Spinner) findViewById(R.id.set_engine);
         language = (EditText) findViewById(R.id.set_language);
+        language.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override public void onFocusChange(View v, boolean hasFocus) {
+                if (!hasFocus) refreshSystemVoices();
+            }
+        });
         stt = (EditText) findViewById(R.id.set_stt);
         tts = (EditText) findViewById(R.id.set_tts);
         voice = (EditText) findViewById(R.id.set_voice);
@@ -202,6 +210,7 @@ public class SettingsActivity extends BaseActivity {
         });
 
         ttsEngine = (Spinner) findViewById(R.id.set_tts_engine);
+        systemVoice = (Spinner) findViewById(R.id.set_system_voice);
         java.util.ArrayList<String> labels = new java.util.ArrayList<String>();
         labels.add("По умолчанию в Android");
         ttsPackages.add("");
@@ -220,6 +229,15 @@ public class SettingsActivity extends BaseActivity {
         ttsAdapter.setDropDownViewResource(R.layout.item_spinner_dropdown);
         ttsEngine.setAdapter(ttsAdapter);
         ttsEngine.setSelection(ttsPackages.indexOf(savedTts));
+        ttsEngine.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                refreshSystemVoices();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                refreshSystemVoices();
+            }
+        });
+        refreshSystemVoices();
         load();
 
         ((Button) findViewById(R.id.btn_save_settings)).setOnClickListener(new View.OnClickListener() {
@@ -282,6 +300,7 @@ public class SettingsActivity extends BaseActivity {
         stt.setText(settings.get(SettingsStore.STT_MODEL, ""));
         tts.setText(settings.get(SettingsStore.TTS_MODEL, ""));
         voice.setText(settings.get(SettingsStore.VOICE, ""));
+        refreshSystemVoices();
         bargeIn.setChecked(settings.getBool(SettingsStore.BARGE_IN, true));
         saveAudio.setChecked(settings.getBool(SettingsStore.SAVE_AUDIO, false));
         keepHistory.setChecked(settings.getBool(SettingsStore.KEEP_HISTORY, true));
@@ -295,12 +314,56 @@ public class SettingsActivity extends BaseActivity {
         settings.set(SettingsStore.STT_MODEL, stt.getText().toString().trim());
         settings.set(SettingsStore.TTS_MODEL, tts.getText().toString().trim());
         settings.set(SettingsStore.VOICE, voice.getText().toString().trim());
+        settings.set(ru.alexv.anyailive.voice.SystemTts.SYSTEM_VOICE_SETTING,
+                systemVoice == null || systemVoice.getSelectedItemPosition() < 0
+                        || systemVoiceNames.isEmpty() ? ""
+                        : systemVoiceNames.get(systemVoice.getSelectedItemPosition()));
         settings.setBool(SettingsStore.BARGE_IN, bargeIn.isChecked());
         settings.setBool(SettingsStore.SAVE_AUDIO, saveAudio.isChecked());
         settings.setBool(SettingsStore.KEEP_HISTORY, keepHistory.isChecked());
         Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show();
     }
 
+    private void refreshSystemVoices() {
+        final String lang = language == null ? "" : language.getText().toString().trim();
+        final String selected = settings == null ? "" : settings.get(
+                ru.alexv.anyailive.voice.SystemTts.SYSTEM_VOICE_SETTING, "");
+        final java.util.ArrayList<String> labels = new java.util.ArrayList<String>();
+        systemVoiceNames.clear();
+        systemVoiceLocales.clear();
+        labels.add(getString(R.string.settings_system_voice_default));
+        systemVoiceNames.add("");
+        systemVoiceLocales.add("");
+        final String packageName = ttsPackages.isEmpty() ? "" : ttsPackages.get(ttsEngine.getSelectedItemPosition());
+        final android.speech.tts.TextToSpeech[] holder = new android.speech.tts.TextToSpeech[1];
+        holder[0] = new android.speech.tts.TextToSpeech(this,
+                new android.speech.tts.TextToSpeech.OnInitListener() {
+                    @Override public void onInit(int status) {
+                        android.speech.tts.TextToSpeech probe = holder[0];
+                        if (probe == null) return;
+                        if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                            for (ru.alexv.anyailive.voice.SystemTts.VoiceInfo v
+                                    : ru.alexv.anyailive.voice.SystemTts.voicesForLanguage(probe, lang)) {
+                                systemVoiceNames.add(v.name);
+                                systemVoiceLocales.add(v.locale);
+                                labels.add(v.toString());
+                            }
+                            if (selected.length() > 0 && !systemVoiceNames.contains(selected)) {
+                                labels.add(getString(R.string.settings_system_voice_missing) + ": " + selected);
+                                systemVoiceNames.add(selected);
+                                systemVoiceLocales.add("");
+                            }
+                            ArrayAdapter<String> a = new ArrayAdapter<String>(SettingsActivity.this,
+                                    R.layout.item_spinner, labels);
+                            a.setDropDownViewResource(R.layout.item_spinner_dropdown);
+                            systemVoice.setAdapter(a);
+                            int index = systemVoiceNames.indexOf(selected);
+                            systemVoice.setSelection(index < 0 ? 0 : index);
+                        }
+                        holder[0].shutdown();
+                    }
+                }, packageName.length() == 0 ? null : packageName);
+    }
     private void stopPreview() {
         ru.alexv.anyailive.voice.SystemTts old = preview;
         preview = null;

@@ -85,6 +85,10 @@ public class LiveActivity extends BaseActivity {
     private final StringBuilder said = new StringBuilder();
     private Animation pulse;
 
+    public static boolean shouldPersistTypedUser(boolean cascadeMode) {
+        return !cascadeMode;
+    }
+
     public static Intent intent(Context from, long chatId) {
         Intent i = new Intent(from, LiveActivity.class);
         i.putExtra(EXTRA_CHAT_ID, chatId);
@@ -277,6 +281,9 @@ public class LiveActivity extends BaseActivity {
         heard.setLength(0);
         heard.append(text);
         userText.setText(text);
+        if (shouldPersistTypedUser(cascade)) {
+            store.addMessage(chat.id, "user", text);
+        }
         engine.sendText(text);
     }
 
