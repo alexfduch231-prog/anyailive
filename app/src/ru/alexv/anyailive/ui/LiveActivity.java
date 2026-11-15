@@ -25,8 +25,12 @@ import ru.alexv.anyailive.data.Model;
 import ru.alexv.anyailive.data.ModelsStore;
 import ru.alexv.anyailive.data.SecretStore;
 import ru.alexv.anyailive.data.SettingsStore;
+import ru.alexv.anyailive.chat.ChatClient;
+import ru.alexv.anyailive.chat.ChatLink;
 import ru.alexv.anyailive.voice.AudioIn;
 import ru.alexv.anyailive.voice.AudioOut;
+import ru.alexv.anyailive.voice.CascadeHttp;
+import ru.alexv.anyailive.voice.CascadeSystem;
 import ru.alexv.anyailive.voice.LiveEngineGemini;
 import ru.alexv.anyailive.voice.LiveEngineOpenAI;
 import ru.alexv.anyailive.voice.VoiceEngine;
@@ -46,6 +50,7 @@ public class LiveActivity extends BaseActivity {
     private ChatStore store;
     private ModelsStore models;
     private SecretStore secrets;
+    private ChatClient client;
 
     private long chatId;
     private ChatStore.Chat chat;
@@ -61,6 +66,8 @@ public class LiveActivity extends BaseActivity {
     private volatile VoiceEngine engine;
     private volatile AudioIn mic;
     private volatile AudioOut out;
+    private boolean cascade;
+    private CascadeHttp cascadeHttp;
 
     private volatile boolean micPaused;
     private volatile boolean running;
@@ -91,6 +98,7 @@ public class LiveActivity extends BaseActivity {
         store = new ChatStore(this);
         models = new ModelsStore(this);
         secrets = new SecretStore(this);
+        client = new ChatClient();
 
         chatId = getIntent().getLongExtra(EXTRA_CHAT_ID, 0);
         title = (TextView) findViewById(R.id.live_title);
@@ -182,20 +190,39 @@ public class LiveActivity extends BaseActivity {
 
     private void connect() {
         if (isFinishing() || isDestroyed() || !callbacks.start()) return;
+        SettingsStore settings = new SettingsStore(this);
+        String route = VoiceConfig.route(VoiceConfig.engine(settings), model);
+        if (!VoiceConfig.ENGINE_LIVE.equals(route) && !VoiceConfig.ENGINE_CASCADE.equals(route)) {
+            toast(getString(R.string.live_no_live));
+            finish();
+            return;
+        }
+        Model configured = VoiceConfig.apply(settings, model);
+        String prompt = getString(R.string.live_system_prompt);
+        String language = VoiceConfig.language(settings, getString(R.string.voice_language_default));
+        cascade = VoiceConfig.ENGINE_CASCADE.equals(route);
+        if (cascade) {
+            ChatLink link = new ChatLink(client, configured, apiKey);
+            boolean http = VoiceConfig.useHttpStt(settings.get(SettingsStore.STT_ENGINE, "system"));
+            VoiceEngine c = http
+                    ? new CascadeHttp(this, configured, link, prompt, language)
+                    : new CascadeSystem(this, configured, link, prompt, language);
+            if (c instanceof CascadeHttp) cascadeHttp = (CascadeHttp) c;
+            engine = c;
+            running = true;
+            saveAudio = false;
+            clip = null;
+            engine.start(new EngineCallback());
+            if (!running || engine == null) return;
+            showState(VoiceEngine.LISTENING);
+            return;
+        }
         if (apiKey == null || apiKey.trim().length() == 0) {
             toast("Для Live нужен API-ключ. Добавь его в настройках модели.");
             finish();
             return;
         }
-        SettingsStore settings = new SettingsStore(this);
-        if (VoiceConfig.ENGINE_CASCADE.equals(VoiceConfig.engine(settings))) {
-            toast(getString(R.string.live_cascade_only));
-            finish();
-            return;
-        }
-        Model configured = VoiceConfig.apply(settings, model);
         String protocol = configured.liveProtocol == null ? Model.LIVE_NONE : configured.liveProtocol;
-        String prompt = getString(R.string.live_system_prompt);
         if (Model.LIVE_OPENAI.equals(protocol)) {
             LiveEngineOpenAI e = new LiveEngineOpenAI(configured, apiKey, prompt);
             e.setSink(new OpenAiSink());
@@ -247,7 +274,6 @@ public class LiveActivity extends BaseActivity {
             return;
         }
         input.setText("");
-        store.addMessage(chat.id, "user", text);
         heard.setLength(0);
         heard.append(text);
         userText.setText(text);
@@ -261,6 +287,15 @@ public class LiveActivity extends BaseActivity {
         heard.setLength(0);
         said.setLength(0);
         if (circle != null) circle.clearAnimation();
+        if (cascade) {
+            if (engine != null) {
+                engine.stop();
+                engine = null;
+            }
+            cascadeHttp = null;
+            cascade = false;
+            return;
+        }
         if (mic != null) {
             mic.stop();
             mic = null;
@@ -593,7 +628,11 @@ public class LiveActivity extends BaseActivity {
         @Override
         public void onError(final String message) {
             engineEvent(new Runnable() {
-                @Override public void run() { toast(message); }
+                @Override public void run() {
+                    toast(message);
+                    stopAll();
+                    finish();
+                }
             });
         }
     }

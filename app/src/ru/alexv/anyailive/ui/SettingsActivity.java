@@ -26,11 +26,13 @@ public class SettingsActivity extends BaseActivity {
 
     /** Значения движка в том же порядке, что и подписи в списке. */
     private static final String[] ENGINES = {"auto", "live", "cascade"};
+    private static final String[] STT_ENGINES = {"system", "http"};
 
     private ru.alexv.anyailive.voice.SystemTts preview;
     private ru.alexv.anyailive.voice.AudioOut previewAudio;
     private SettingsStore settings;
     private Spinner engine;
+    private Spinner sttEngine;
     private Spinner ttsEngine;
     private final java.util.ArrayList<String> ttsPackages = new java.util.ArrayList<String>();
     private EditText language;
@@ -182,6 +184,23 @@ public class SettingsActivity extends BaseActivity {
         adapter.setDropDownViewResource(R.layout.item_spinner_dropdown);
         engine.setAdapter(adapter);
 
+        sttEngine = (Spinner) findViewById(R.id.set_stt_engine);
+        ArrayAdapter<String> sttAdapter = new ArrayAdapter<String>(this, R.layout.item_spinner,
+                new String[]{getString(R.string.stt_engine_system), getString(R.string.stt_engine_http)});
+        sttAdapter.setDropDownViewResource(R.layout.item_spinner_dropdown);
+        sttEngine.setAdapter(sttAdapter);
+        sttEngine.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                stt.setEnabled("http".equals(STT_ENGINES[position]));
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                stt.setEnabled(false);
+            }
+        });
+
         ttsEngine = (Spinner) findViewById(R.id.set_tts_engine);
         java.util.ArrayList<String> labels = new java.util.ArrayList<String>();
         labels.add("По умолчанию в Android");
@@ -253,9 +272,13 @@ public class SettingsActivity extends BaseActivity {
     private void load() {
         engine.setSelection(indexOfEngine(settings.get(SettingsStore.ENGINE, "auto")));
         language.setText(settings.get(SettingsStore.LANGUAGE, getString(R.string.voice_language_default)));
-        stt.setHint("Из настроек модели");
-        tts.setHint("Из настроек модели");
-        voice.setHint("Из настроек модели");
+        // Missing/unknown provider stays system; legacy model names never opt into HTTP.
+        int sttIndex = indexOf(STT_ENGINES, settings.get(SettingsStore.STT_ENGINE, "system"));
+        sttEngine.setSelection(sttIndex);
+        stt.setEnabled("http".equals(STT_ENGINES[sttIndex]));
+        stt.setHint(R.string.settings_model_fallback);
+        tts.setHint(R.string.settings_model_fallback);
+        voice.setHint(R.string.settings_model_fallback);
         stt.setText(settings.get(SettingsStore.STT_MODEL, ""));
         tts.setText(settings.get(SettingsStore.TTS_MODEL, ""));
         voice.setText(settings.get(SettingsStore.VOICE, ""));
@@ -267,6 +290,7 @@ public class SettingsActivity extends BaseActivity {
     private void save() {
         settings.set(SettingsStore.TTS_ENGINE, ttsPackages.get(ttsEngine.getSelectedItemPosition()));
         settings.set(SettingsStore.ENGINE, ENGINES[engine.getSelectedItemPosition()]);
+        settings.set(SettingsStore.STT_ENGINE, STT_ENGINES[sttEngine.getSelectedItemPosition()]);
         settings.set(SettingsStore.LANGUAGE, language.getText().toString().trim());
         settings.set(SettingsStore.STT_MODEL, stt.getText().toString().trim());
         settings.set(SettingsStore.TTS_MODEL, tts.getText().toString().trim());

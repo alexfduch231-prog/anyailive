@@ -40,12 +40,16 @@ public final class SettingsPolicyTests {
         equal("auto live", "live", route("auto", gemini));
         equal("explicit cascade", "cascade", route("cascade", gemini));
         equal("explicit live", "live", route("live", gemini));
-        equal("live-only rejects nonlive", "unsupported", route("live", empty));
+        equal("ordinary model remains voice-capable with legacy live preference", "cascade", route("live", empty));
         equal("null setting defaults to auto", "live", route(null, gemini));
         equal("invalid setting defaults to auto", "live", route("invalid", gemini));
         Model unknown = new Model();
         unknown.liveProtocol = "unknown";
-        equal("unknown protocol is not live-capable", "unsupported", route("live", unknown));
+        equal("unknown protocol uses ordinary conversation", "cascade", route("live", unknown));
+        Method sttRoute = VoiceConfig.class.getMethod("useHttpStt", String.class);
+        if ((Boolean) sttRoute.invoke(null, new Object[]{null})) throw new AssertionError("unset STT must use phone");
+        if ((Boolean) sttRoute.invoke(null, "whisper-1")) throw new AssertionError("model id must not enable HTTP STT");
+        if (!(Boolean) sttRoute.invoke(null, "http")) throw new AssertionError("explicit HTTP STT must be honored");
         equal("missing model rejects live", "unsupported", route("live", null));
     }
 

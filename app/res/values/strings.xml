@@ -150,7 +150,12 @@
     <string name="engine_cascade">Только каскад (STT → чат → TTS)</string>
     <string name="settings_language">Язык распознавания и синтеза</string>
     <string name="settings_language_hint">ru-RU</string>
-    <string name="settings_stt">Модель распознавания (HTTP)</string>
+    <string name="settings_stt_engine">Распознавание речи в каскаде</string>
+    <string name="stt_engine_system">Системное Android (по умолчанию)</string>
+    <string name="stt_engine_http">HTTP на сервере модели</string>
+    <string name="settings_stt_engine_hint">Системное распознавание не зависит от текстовой модели, но сервис Android может требовать интернет. HTTP отправляет запись на /audio/transcriptions сервера выбранной модели. Поле модели распознавания используется только для HTTP.</string>
+    <string name="settings_model_fallback">Из настроек модели</string>
+    <string name="settings_stt">Модель распознавания (только HTTP)</string>
     <string name="settings_stt_hint">например whisper-1</string>
     <string name="settings_tts">Модель озвучки (HTTP)</string>
     <string name="settings_tts_hint">например tts-1</string>

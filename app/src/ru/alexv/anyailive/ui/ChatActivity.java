@@ -142,7 +142,7 @@ public class ChatActivity extends BaseActivity {
         findViewById(R.id.btn_live).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (chat == null) {
+                if (chat == null || model == null) {
                     Toast.makeText(ChatActivity.this, R.string.chat_no_model, Toast.LENGTH_LONG).show();
                     return;
                 }
@@ -551,8 +551,8 @@ public class ChatActivity extends BaseActivity {
         String prompt = getString(R.string.live_system_prompt);
         String language = VoiceConfig.language(settings, getString(R.string.voice_language_default));
         ChatLink link = new ChatLink(client, configured, apiKey);
-        boolean http = configured.baseUrl != null && configured.baseUrl.length() > 0
-                && configured.sttModel != null && configured.sttModel.length() > 0;
+        boolean http = VoiceConfig.useHttpStt(settings.get(
+                ru.alexv.anyailive.data.SettingsStore.STT_ENGINE, "system"));
         voice = http
                 ? new CascadeHttp(this, configured, link, prompt, language)
                 : new CascadeSystem(this, configured, link, prompt, language);

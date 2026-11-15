@@ -150,7 +150,12 @@
     <string name="engine_cascade">Cascade only (STT → chat → TTS)</string>
     <string name="settings_language">Recognition and synthesis language</string>
     <string name="settings_language_hint">ru-RU</string>
-    <string name="settings_stt">Recognition model (HTTP)</string>
+    <string name="settings_stt_engine">Speech recognition in cascade mode</string>
+    <string name="stt_engine_system">Android system (default)</string>
+    <string name="stt_engine_http">HTTP on the model server</string>
+    <string name="settings_stt_engine_hint">System recognition is independent of the text model, but the Android service may need internet. HTTP sends recordings to /audio/transcriptions on the selected model server. The recognition model field applies only to HTTP.</string>
+    <string name="settings_model_fallback">From model settings</string>
+    <string name="settings_stt">Recognition model (HTTP only)</string>
     <string name="settings_stt_hint">e.g. whisper-1</string>
     <string name="settings_tts">Speech model (HTTP)</string>
     <string name="settings_tts_hint">e.g. tts-1</string>

@@ -6,7 +6,11 @@
     android:id="@+id/live_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colBg">
+    android:background="#040812">
+
+    <ru.alexv.anyailive.ui.LiveGlowView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <!-- Центр: заголовок + волна + состояние -->
     <LinearLayout
@@ -22,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="30sp"
-            android:textColor="?attr/colFg"
+            android:textColor="#FFF3F6FF"
             android:letterSpacing="0.04"
             android:maxLines="1"
             android:ellipsize="end"
@@ -36,7 +40,7 @@
             android:layout_marginTop="14dp"
             android:gravity="center"
             android:textSize="16sp"
-            android:textColor="?attr/colFg"
+            android:textColor="#FFF3F6FF"
             android:maxLines="3"
             android:ellipsize="start" />
 
@@ -60,7 +64,7 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:textSize="14sp"
-            android:textColor="?attr/colMuted"
+            android:textColor="#FFBBC9DE"
             android:text="@string/live_connecting" />
     </LinearLayout>
 
@@ -79,7 +83,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="14sp"
-            android:textColor="?attr/colMuted"
+            android:textColor="#FFBBC9DE"
             android:maxLines="2"
             android:ellipsize="start"
             android:layout_marginBottom="6dp" />
@@ -93,7 +97,7 @@
             <EditText
                 android:id="@+id/live_input"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_input"
                 android:paddingStart="16dp"
@@ -108,9 +112,10 @@
             <Button
                 android:id="@+id/btn_live_send"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_marginStart="8dp"
                 android:minWidth="0dp"
+                android:background="@drawable/bg_pill_button"
                 android:text="@string/btn_send" />
         </LinearLayout>
 
@@ -123,15 +128,19 @@
             <Button
                 android:id="@+id/btn_live_interrupt"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_pill_button"
                 android:text="@string/live_interrupt" />
 
             <Button
                 android:id="@+id/btn_live_hangup"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_pill_button"
                 android:text="@string/live_hangup" />
         </LinearLayout>
     </LinearLayout>

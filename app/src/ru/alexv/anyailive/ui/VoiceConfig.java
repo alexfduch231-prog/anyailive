@@ -43,9 +43,14 @@ public final class VoiceConfig {
             return ENGINE_CASCADE;
         }
         if (ENGINE_LIVE.equals(requested)) {
-            return live ? ENGINE_LIVE : "unsupported";
+            return model == null ? "unsupported" : live ? ENGINE_LIVE : ENGINE_CASCADE;
         }
         return live ? ENGINE_LIVE : ENGINE_CASCADE;
+    }
+
+    /** HTTP recognition is opt-in; stored model names alone must not select it. */
+    public static boolean useHttpStt(String choice) {
+        return "http".equals(choice);
     }
 
     /** Язык распознавания и синтеза; по умолчанию — то, что передали. */

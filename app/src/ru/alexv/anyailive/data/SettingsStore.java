@@ -7,6 +7,7 @@ import android.content.Context;
 public class SettingsStore {
 
     public static final String ENGINE = "engine";              // auto | live | cascade
+    public static final String STT_ENGINE = "stt_engine";        // system (default) | http
     public static final String STT_MODEL = "stt_model";
     public static final String TTS_MODEL = "tts_model";
     public static final String TTS_ENGINE = "tts_engine_package";
