@@ -50,6 +50,16 @@
             android:textColor="?attr/colMuted" />
 
         <TextView
+            android:id="@+id/set_update"
+            style="@style/SettingsCheck"
+            android:layout_marginTop="4dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:textColor="?attr/colAccent"
+            android:text="@string/check_updates" />
+
+        <TextView
             style="@style/SettingsLabel"
             android:layout_marginTop="8dp"
             android:text="@string/settings_engine" />

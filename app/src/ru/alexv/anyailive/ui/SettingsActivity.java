@@ -127,12 +127,54 @@ public class SettingsActivity extends BaseActivity {
 
         // Версия приложения — из сборки (version.txt).
         TextView versionRow = (TextView) findViewById(R.id.set_version);
+        String versionName;
         try {
             android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
             versionRow.setText(getString(R.string.version_row) + ": " + pi.versionName + " (" + pi.versionCode + ")");
+            versionName = pi.versionName;
         } catch (android.content.pm.PackageManager.NameNotFoundException e) {
             versionRow.setText(getString(R.string.version_row) + ": -");
+            versionName = null;
         }
+
+        // Проверка обновлений — GitHub Releases.
+        final String currentVersion = versionName;
+        final TextView updateRow = (TextView) findViewById(R.id.set_update);
+        final android.os.Handler main = new android.os.Handler();
+        updateRow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                updateRow.setText(R.string.update_checking);
+                ru.alexv.anyailive.net.Updater.check(main, currentVersion,
+                        new ru.alexv.anyailive.net.Updater.Listener() {
+                    @Override
+                    public void onUpdate(String tag, String url) {
+                        updateRow.setText(R.string.check_updates);
+                        new android.app.AlertDialog.Builder(SettingsActivity.this)
+                                .setTitle("anyAIlive")
+                                .setMessage(getString(R.string.update_available, tag))
+                                .setPositiveButton(android.R.string.ok,
+                                        new android.content.DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(android.content.DialogInterface d, int w) {
+                                        ru.alexv.anyailive.net.Updater.openDownload(
+                                                SettingsActivity.this, url);
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show();
+                    }
+
+                    @Override
+                    public void onNone(boolean wasError) {
+                        updateRow.setText(R.string.check_updates);
+                        int msg = wasError ? R.string.update_error : R.string.update_uptodate;
+                        android.widget.Toast.makeText(SettingsActivity.this, msg,
+                                android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.item_spinner,
                 new String[]{getString(R.string.engine_auto), getString(R.string.engine_live),
