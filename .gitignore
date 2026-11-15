@@ -1,7 +1,7 @@
 build/
-*.apk
-*.apk.idsig
-*.keystore
-app/libs/*.jar
-
 dist/
+*.apk
+spike/__pycache__/
+*.pyc
+debug.keystore
+anyailive.apk.idsig
