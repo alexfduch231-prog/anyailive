@@ -40,6 +40,7 @@ public class ModelsActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_models);
         store = new ModelsStore(this);

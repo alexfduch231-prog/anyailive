@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
+    android:background="?attr/colBg"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/app_name"
-        android:textColor="@color/fg"
+        android:textColor="?attr/colFg"
         android:textSize="24sp"
         android:textStyle="bold" />
 
@@ -21,7 +21,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:text="@string/main_hint"
-        android:textColor="@color/muted"
+        android:textColor="?attr/colMuted"
         android:textSize="13sp" />
 
     <FrameLayout
@@ -48,7 +48,7 @@
             android:lineSpacingExtra="4dp"
             android:padding="24dp"
             android:text="@string/chats_empty"
-            android:textColor="@color/muted"
+            android:textColor="?attr/colMuted"
             android:textSize="15sp" />
     </FrameLayout>
 

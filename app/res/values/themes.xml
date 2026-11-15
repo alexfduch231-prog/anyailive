@@ -1,18 +1,167 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Базовая тема: значения по умолчанию (тёмная палитра Gemini).
+         Каждая тема из ui/Themes переопределяет colX-атрибуты. -->
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/bg</item>
-        <item name="android:statusBarColor">@color/bg</item>
-        <item name="android:navigationBarColor">@color/bg</item>
-        <item name="android:textColorPrimary">@color/fg</item>
-        <item name="android:colorAccent">@color/accent</item>
+        <item name="colBg">@color/bg</item>
+        <item name="colSurface">@color/surface</item>
+        <item name="colSurface2">@color/surface2</item>
+        <item name="colFg">@color/fg</item>
+        <item name="colMuted">@color/muted</item>
+        <item name="colAccent">@color/accent</item>
+        <item name="colOnAccent">@color/onAccent</item>
+        <item name="colLine">@color/line</item>
+        <item name="colBubbleUser">@color/bubbleUser</item>
+        <item name="colBubbleAi">@color/bubbleAi</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
         <!-- Все кнопки приложения — пилюли в духе Gemini -->
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <style name="ThemeDark" parent="AppTheme" />
+
+    <!-- Оттеночные темы -->
+    <style name="ThemeLight">
+        <item name="colBg">#FFF2F3F5</item>
+        <item name="colSurface">#FFFFFFFF</item>
+        <item name="colSurface2">#FFE9EBEF</item>
+        <item name="colFg">#FF202124</item>
+        <item name="colMuted">#FF5F6368</item>
+        <item name="colAccent">#FF0B57D0</item>
+        <item name="colOnAccent">#FFFFFFFF</item>
+        <item name="colLine">#FFDADCE0</item>
+        <item name="colBubbleUser">#FFDDE3EC</item>
+        <item name="colBubbleAi">#FFFFFFFF</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <style name="ThemeMidnight">
+        <item name="colBg">#FF0B1020</item>
+        <item name="colSurface">#FF101731</item>
+        <item name="colSurface2">#FF182142</item>
+        <item name="colFg">#FFDCE6FF</item>
+        <item name="colMuted">#FF7C89B8</item>
+        <item name="colAccent">#FF6C8CFF</item>
+        <item name="colOnAccent">#FF0B1020</item>
+        <item name="colLine">#FF22305C</item>
+        <item name="colBubbleUser">#FF1B2750</item>
+        <item name="colBubbleAi">#FF101731</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <style name="ThemeAsh">
+        <item name="colBg">#FF17181A</item>
+        <item name="colSurface">#FF1F2124</item>
+        <item name="colSurface2">#FF2A2D31</item>
+        <item name="colFg">#FFE8EAED</item>
+        <item name="colMuted">#FF9BA0A6</item>
+        <item name="colAccent">#FFC4C7CC</item>
+        <item name="colOnAccent">#FF17181A</item>
+        <item name="colLine">#FF3A3D42</item>
+        <item name="colBubbleUser">#FF2A2D31</item>
+        <item name="colBubbleAi">#FF1F2124</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <!-- Тематические темы -->
+    <style name="ThemeCyber">
+        <item name="colBg">#FF0A0714</item>
+        <item name="colSurface">#FF120B22</item>
+        <item name="colSurface2">#FF1B1033</item>
+        <item name="colFg">#FFEAF6FF</item>
+        <item name="colMuted">#FF9F7AE5</item>
+        <item name="colAccent">#FFFF2BD6</item>
+        <item name="colOnAccent">#FF0A0714</item>
+        <item name="colLine">#FF2E1B52</item>
+        <item name="colBubbleUser">#FF23124A</item>
+        <item name="colBubbleAi">#FF120B22</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <style name="ThemeMatrix">
+        <item name="colBg">#FF030A04</item>
+        <item name="colSurface">#FF071809</item>
+        <item name="colSurface2">#FF0C2410</item>
+        <item name="colFg">#FFC8FFD0</item>
+        <item name="colMuted">#FF5F9C68</item>
+        <item name="colAccent">#FF37F06E</item>
+        <item name="colOnAccent">#FF030A04</item>
+        <item name="colLine">#FF14381B</item>
+        <item name="colBubbleUser">#FF0C2410</item>
+        <item name="colBubbleAi">#FF071809</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <style name="ThemeSunset">
+        <item name="colBg">#FF1A1023</item>
+        <item name="colSurface">#FF241534</item>
+        <item name="colSurface2">#FF331C4A</item>
+        <item name="colFg">#FFFFE9DC</item>
+        <item name="colMuted">#FFC99BB0</item>
+        <item name="colAccent">#FFFF7A59</item>
+        <item name="colOnAccent">#FF1A1023</item>
+        <item name="colLine">#FF4A2B66</item>
+        <item name="colBubbleUser">#FF3A2054</item>
+        <item name="colBubbleAi">#FF241534</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
+        <item name="android:buttonStyle">@style/PillButton</item>
+    </style>
+
+    <style name="ThemeAurora">
+        <item name="colBg">#FF071316</item>
+        <item name="colSurface">#FF0B1D21</item>
+        <item name="colSurface2">#FF102A30</item>
+        <item name="colFg">#FFD9F6F1</item>
+        <item name="colMuted">#FF6FA8A4</item>
+        <item name="colAccent">#FF35E0C4</item>
+        <item name="colOnAccent">#FF071316</item>
+        <item name="colLine">#FF1A4045</item>
+        <item name="colBubbleUser">#FF102A30</item>
+        <item name="colBubbleAi">#FF0B1D21</item>
+        <item name="android:windowBackground">?attr/colBg</item>
+        <item name="android:statusBarColor">?attr/colBg</item>
+        <item name="android:navigationBarColor">?attr/colBg</item>
+        <item name="android:textColorPrimary">?attr/colFg</item>
+        <item name="android:colorAccent">?attr/colAccent</item>
         <item name="android:buttonStyle">@style/PillButton</item>
     </style>
 
     <style name="PillButton" parent="@android:style/Widget.Material.Button">
         <item name="android:background">@drawable/bg_pill_button</item>
-        <item name="android:textColor">@color/fg</item>
+        <item name="android:textColor">?attr/colFg</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">15sp</item>
         <item name="android:letterSpacing">0.01</item>
@@ -25,7 +174,7 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">16dp</item>
-        <item name="android:textColor">@color/muted</item>
+        <item name="android:textColor">?attr/colMuted</item>
         <item name="android:textSize">13sp</item>
     </style>
 
@@ -38,8 +187,8 @@
         <item name="android:paddingEnd">14dp</item>
         <item name="android:paddingTop">12dp</item>
         <item name="android:paddingBottom">12dp</item>
-        <item name="android:textColor">@color/fg</item>
-        <item name="android:textColorHint">@color/muted</item>
+        <item name="android:textColor">?attr/colFg</item>
+        <item name="android:textColorHint">?attr/colMuted</item>
         <item name="android:textSize">15sp</item>
     </style>
 
@@ -47,7 +196,7 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">12dp</item>
-        <item name="android:textColor">@color/fg</item>
+        <item name="android:textColor">?attr/colFg</item>
         <item name="android:textSize">15sp</item>
     </style>
 </resources>

@@ -9,6 +9,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.List;
@@ -42,6 +43,7 @@ public class SettingsActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
         settings = new SettingsStore(this);
@@ -54,6 +56,28 @@ public class SettingsActivity extends Activity {
         bargeIn = (CheckBox) findViewById(R.id.set_barge_in);
         saveAudio = (CheckBox) findViewById(R.id.set_save_audio);
         keepHistory = (CheckBox) findViewById(R.id.set_keep_history);
+
+        final TextView themeRow = (TextView) findViewById(R.id.set_theme);
+        themeRow.setText(getString(R.string.theme_row) + ": " + Themes.labelFor(settings.get(SettingsStore.THEME, Themes.DEFAULT)));
+        themeRow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String current = settings.get(SettingsStore.THEME, Themes.DEFAULT);
+                new android.app.AlertDialog.Builder(SettingsActivity.this)
+                        .setTitle(R.string.choose_theme)
+                        .setSingleChoiceItems(Themes.LABELS, java.util.Arrays.asList(Themes.LABELS).indexOf(Themes.labelFor(current)),
+                                new android.content.DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(android.content.DialogInterface d, int which) {
+                                        d.dismiss();
+                                        settings.set(SettingsStore.THEME, Themes.keyAt(which));
+                                        recreate();
+                                    }
+                                })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show();
+            }
+        });
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, R.layout.item_spinner,
                 new String[]{getString(R.string.engine_auto), getString(R.string.engine_live),

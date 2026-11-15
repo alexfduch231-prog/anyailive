@@ -1,111 +1,210 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Чат в духе приложения Gemini: сверху модель и «новый чат», слева скрываемая
+     шторка с историей чатов, снизу поле ввода с кнопками Live и микрофона. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/chat_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
-    android:orientation="vertical">
+    android:background="?attr/colBg">
 
+    <!-- Контент -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="16dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Верхняя панель: шторка, модель, новый чат -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="12dp">
+
+            <Button
+                android:id="@+id/btn_drawer"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/drawer_open"
+                android:minWidth="0dp"
+                android:text="@string/icon_menu"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/chat_header"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/colFg"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_new_chat"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/btn_new_chat"
+                android:minWidth="0dp"
+                android:text="@string/icon_compose"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/chat_messages"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:paddingStart="12dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp"
+                android:stackFromBottom="true"
+                android:transcriptMode="normal" />
+
+            <TextView
+                android:id="@+id/chat_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="@string/chat_empty"
+                android:textColor="?attr/colMuted"
+                android:textSize="15sp" />
+        </FrameLayout>
+
+        <!-- Нижняя панель: Live, ввод, микрофон, отправить -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="10dp">
+
+            <Button
+                android:id="@+id/btn_live"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:contentDescription="@string/btn_live"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/icon_live"
+                android:textColor="?attr/colAccent"
+                android:textSize="18sp" />
+
+            <EditText
+                android:id="@+id/chat_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_input"
+                android:hint="@string/chat_hint"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="4"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:textColor="?attr/colFg"
+                android:textColorHint="?attr/colMuted"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/btn_mic"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/btn_mic"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/icon_mic"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/btn_send"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/btn_send"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/icon_send"
+                android:textColor="?attr/colAccent"
+                android:textSize="18sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Затемнение под шторкой -->
+    <View
+        android:id="@+id/drawer_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#88000000"
+        android:visibility="gone" />
+
+    <!-- Шторка с историей чатов -->
+    <LinearLayout
+        android:id="@+id/drawer"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:background="?attr/colSurface"
+        android:orientation="vertical"
+        android:translationX="-300dp">
 
         <TextView
-            android:id="@+id/chat_header"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:textColor="@color/fg"
-            android:textSize="16sp"
+            android:paddingStart="20dp"
+            android:paddingTop="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="12dp"
+            android:text="@string/drawer_title"
+            android:textColor="?attr/colFg"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/btn_mic"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:minWidth="0dp"
-            android:text="@string/btn_mic"
-            android:textSize="12sp" />
+        <TextView
+            android:id="@+id/drawer_new_chat"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="@string/btn_new_chat"
+            android:textColor="?attr/colAccent"
+            android:textSize="15sp" />
 
-        <Button
-            android:id="@+id/btn_live"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:minWidth="0dp"
-            android:text="@string/btn_live"
-            android:textSize="12sp" />
-    </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_weight="1">
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:background="?attr/colLine" />
 
         <ListView
-            android:id="@+id/chat_messages"
+            android:id="@+id/drawer_list"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:divider="@null"
-            android:dividerHeight="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:stackFromBottom="true"
-            android:transcriptMode="normal" />
-
-        <TextView
-            android:id="@+id/chat_empty"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:padding="24dp"
-            android:text="@string/chat_empty"
-            android:textColor="@color/muted"
-            android:textSize="15sp" />
-    </FrameLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="12dp">
-
-        <EditText
-            android:id="@+id/chat_input"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:hint="@string/chat_hint"
-            android:inputType="textMultiLine|textCapSentences"
-            android:maxLines="4"
-            android:background="@drawable/bg_input"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:textColor="@color/fg"
-            android:textColorHint="@color/muted"
-            android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/btn_send"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/btn_send" />
+            android:divider="?attr/colLine"
+            android:dividerHeight="1dp" />
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>

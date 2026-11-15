@@ -86,6 +86,7 @@ public class LiveActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_live);
         store = new ChatStore(this);
@@ -100,7 +101,7 @@ public class LiveActivity extends Activity {
         circle = findViewById(R.id.live_circle);
         wave = (WaveformView) findViewById(R.id.live_wave);
         if (wave != null) {
-            wave.setBarColor(getResources().getColor(R.color.accent));
+            wave.setBarColor(ThemesRuntime.color(this, R.attr.colAccent));
         }
         input = (EditText) findViewById(R.id.live_input);
         send = (Button) findViewById(R.id.btn_live_send);

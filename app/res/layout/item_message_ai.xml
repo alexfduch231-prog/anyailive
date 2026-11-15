@@ -11,6 +11,6 @@
     android:paddingEnd="16dp"
     android:paddingTop="12dp"
     android:paddingBottom="12dp"
-    android:textColor="@color/fg"
+    android:textColor="?attr/colFg"
     android:textIsSelectable="true"
     android:textSize="15sp" />

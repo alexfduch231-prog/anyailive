@@ -6,7 +6,7 @@
     android:id="@+id/live_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg">
+    android:background="?attr/colBg">
 
     <!-- Центр: заголовок + волна + состояние -->
     <LinearLayout
@@ -22,7 +22,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="30sp"
-            android:textColor="@color/fg"
+            android:textColor="?attr/colFg"
             android:letterSpacing="0.04"
             android:maxLines="1"
             android:ellipsize="end"
@@ -36,7 +36,7 @@
             android:layout_marginTop="14dp"
             android:gravity="center"
             android:textSize="16sp"
-            android:textColor="@color/fg"
+            android:textColor="?attr/colFg"
             android:maxLines="3"
             android:ellipsize="start" />
 
@@ -60,7 +60,7 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:textSize="14sp"
-            android:textColor="@color/muted"
+            android:textColor="?attr/colMuted"
             android:text="@string/live_connecting" />
     </LinearLayout>
 
@@ -79,7 +79,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="14sp"
-            android:textColor="@color/muted"
+            android:textColor="?attr/colMuted"
             android:maxLines="2"
             android:ellipsize="start"
             android:layout_marginBottom="6dp" />
@@ -99,8 +99,8 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:hint="@string/live_input_hint"
-                android:textColorHint="@color/muted"
-                android:textColor="@color/fg"
+                android:textColorHint="?attr/colMuted"
+                android:textColor="?attr/colFg"
                 android:textSize="15sp"
                 android:inputType="textCapSentences"
                 android:maxLines="2" />

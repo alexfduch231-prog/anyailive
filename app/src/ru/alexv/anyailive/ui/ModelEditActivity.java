@@ -51,6 +51,7 @@ public class ModelEditActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_model_edit);
         store = new ModelsStore(this);

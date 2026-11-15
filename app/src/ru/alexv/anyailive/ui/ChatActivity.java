@@ -60,6 +60,13 @@ public class ChatActivity extends Activity {
     private Button send;
     private View empty;
 
+    /** Шторка истории: панель, затемнение и список чатов. */
+    private View drawer, scrim;
+    private ListView drawerList;
+    private boolean drawerOpen;
+    private final List<ChatStore.Chat> drawerItems = new ArrayList<ChatStore.Chat>();
+    private DrawerAdapter drawerAdapter;
+
     private volatile boolean streaming;
 
     /** Голосовой каскад, пока он включён; null — голосовой режим выключен. */
@@ -87,6 +94,7 @@ public class ChatActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemesRuntime.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
         store = new ChatStore(this);
@@ -100,6 +108,12 @@ public class ChatActivity extends Activity {
         input = (EditText) findViewById(R.id.chat_input);
         send = (Button) findViewById(R.id.btn_send);
         empty = findViewById(R.id.chat_empty);
+
+        drawer = findViewById(R.id.drawer);
+        scrim = findViewById(R.id.drawer_scrim);
+        drawerList = (ListView) findViewById(R.id.drawer_list);
+        drawerAdapter = new DrawerAdapter();
+        drawerList.setAdapter(drawerAdapter);
 
         adapter = new MsgAdapter();
         list.setAdapter(adapter);
@@ -136,6 +150,176 @@ public class ChatActivity extends Activity {
                 startActivity(LiveActivity.intent(ChatActivity.this, chat.id));
             }
         });
+        findViewById(R.id.btn_drawer).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (drawerOpen) {
+                    closeDrawer();
+                } else {
+                    openDrawer();
+                }
+            }
+        });
+        scrim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
+            }
+        });
+        findViewById(R.id.btn_new_chat).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                newChatDialog();
+            }
+        });
+        findViewById(R.id.drawer_new_chat).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
+                newChatDialog();
+            }
+        });
+        header.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(ChatActivity.this, ModelsActivity.class));
+            }
+        });
+        drawerList.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                ChatStore.Chat c = drawerItems.get(position);
+                closeDrawer();
+                if (c.id != chatId) {
+                    finish();
+                    startActivity(intent(ChatActivity.this, c.id));
+                }
+            }
+        });
+        drawerList.setOnItemLongClickListener(new android.widget.AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                confirmDelete(drawerItems.get(position));
+                return true;
+            }
+        });
+    }
+
+    /** Выездная шторка: подгружаем свежий список чатов и показываем. */
+    private void openDrawer() {
+        drawerItems.clear();
+        drawerItems.addAll(store.chats());
+        drawerAdapter.notifyDataSetChanged();
+        drawerOpen = true;
+        drawer.animate().translationX(0f).setDuration(180).start();
+        scrim.setVisibility(View.VISIBLE);
+        scrim.animate().alpha(1f).setDuration(180).start();
+        hideKeyboard();
+    }
+
+    private void closeDrawer() {
+        if (!drawerOpen) {
+            return;
+        }
+        drawerOpen = false;
+        drawer.animate().translationX(-drawer.getWidth()).setDuration(160).start();
+        scrim.animate().alpha(0f).setDuration(160).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                if (!drawerOpen) {
+                    scrim.setVisibility(View.GONE);
+                }
+            }
+        }).start();
+    }
+
+    /** Выбор модели и создание нового чата, как на главном экране. */
+    private void newChatDialog() {
+        final List<Model> all = models.all();
+        if (all.isEmpty()) {
+            Toast.makeText(this, R.string.no_models, Toast.LENGTH_LONG).show();
+            startActivity(new Intent(this, ModelsActivity.class));
+            return;
+        }
+        String[] names = new String[all.size()];
+        for (int i = 0; i < all.size(); i++) {
+            Model m = all.get(i);
+            names[i] = m.name == null || m.name.length() == 0 ? m.modelId : m.name;
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.choose_model)
+                .setItems(names, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        long id = store.newChat(all.get(which).id);
+                        finish();
+                        startActivity(intent(ChatActivity.this, id));
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void confirmDelete(final ChatStore.Chat c) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.delete_chat_confirm)
+                .setPositiveButton(R.string.delete, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        store.delete(c.id);
+                        drawerItems.clear();
+                        drawerItems.addAll(store.chats());
+                        drawerAdapter.notifyDataSetChanged();
+                        if (c.id == chatId) {
+                            finish();
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /** Строка шторки: название чата и модель. */
+    private class DrawerAdapter extends BaseAdapter {
+
+        @Override
+        public int getCount() {
+            return drawerItems.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return drawerItems.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return drawerItems.get(position).id;
+        }
+
+        @Override
+        public View getView(int position, View convert, ViewGroup parent) {
+            TextView row = (TextView) convert;
+            if (row == null) {
+                row = new TextView(ChatActivity.this);
+                row.setPadding(dp(20), dp(14), dp(16), dp(14));
+                row.setTextSize(15);
+            }
+            ChatStore.Chat c = drawerItems.get(position);
+            Model m = models.byId(c.modelId);
+            String mName = m == null ? "" : (m.name == null || m.name.length() == 0 ? m.modelId : m.name);
+            String title = c.title == null || c.title.length() == 0
+                    ? getString(R.string.chat_untitled) : c.title;
+            row.setText(title + (mName.length() == 0 ? "" : "\n" + mName));
+            boolean current = c.id == chatId;
+            row.setTextColor(current ? ThemesRuntime.color(ChatActivity.this, R.attr.colAccent)
+                    : ThemesRuntime.color(ChatActivity.this, R.attr.colFg));
+            return row;
+        }
+
+        private int dp(int v) {
+            return Math.round(v * getResources().getDisplayMetrics().density);
+        }
     }
 
     @Override
@@ -172,7 +356,8 @@ public class ChatActivity extends Activity {
                 : (model.name == null || model.name.length() == 0 ? model.modelId : model.name);
         String title = chat == null || chat.title == null || chat.title.length() == 0
                 ? getString(R.string.chat_untitled) : chat.title;
-        header.setText(title + " · " + name);
+        // В шапке — подключённая модель; название чата живёт в шторке.
+        header.setText(name);
         rows.clear();
         if (chat != null) {
             rows.addAll(store.messages(chat.id));

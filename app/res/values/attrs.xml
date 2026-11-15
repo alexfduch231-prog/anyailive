@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Тематические атрибуты палитры: все layout/drawable ссылаются на ?attr/...,
+     а конкретные цвета задаются выбранной темой в themes.xml (см. ui/Themes). -->
+<resources>
+    <attr name="colBg" format="color" />
+    <attr name="colSurface" format="color" />
+    <attr name="colSurface2" format="color" />
+    <attr name="colFg" format="color" />
+    <attr name="colMuted" format="color" />
+    <attr name="colAccent" format="color" />
+    <attr name="colOnAccent" format="color" />
+    <attr name="colLine" format="color" />
+    <attr name="colBubbleUser" format="color" />
+    <attr name="colBubbleAi" format="color" />
+</resources>

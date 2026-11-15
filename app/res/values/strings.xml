@@ -6,6 +6,15 @@
     <!-- чаты: главный экран -->
     <string name="chats_empty">Пока пусто.\nДобавьте модель: имя, адрес API, ключ — и начните чат.</string>
     <string name="btn_new_chat">Новый чат</string>
+    <string name="icon_menu">☰</string>
+    <string name="icon_compose">✎</string>
+    <string name="icon_live">◉ Live</string>
+    <string name="icon_mic">🎙</string>
+    <string name="icon_send">➤</string>
+    <string name="drawer_open">Открыть историю чатов</string>
+    <string name="drawer_title">История чатов</string>
+    <string name="theme_row">Тема оформления</string>
+    <string name="choose_theme">Выберите тему</string>
     <string name="btn_models">Модели</string>
     <string name="chat_untitled">Без названия</string>
     <string name="choose_model">Выберите модель</string>
