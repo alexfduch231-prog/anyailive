@@ -36,6 +36,7 @@ public final class CascadeHttp implements VoiceEngine {
     private final String systemPrompt;
     private final String language;
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final Object ttsLock = new Object();
     private final ArrayDeque<String> speech = new ArrayDeque<String>();
     private final List<CascadeSystem.ChatMsg> history = new ArrayList<CascadeSystem.ChatMsg>();
 
@@ -225,11 +226,14 @@ public final class CascadeHttp implements VoiceEngine {
             return;
         }
         final int gen = generation;
-        synchronized (speech) {
+        synchronized (ttsLock) {
+            if (!running || gen != generation) {
+                return;
+            }
             speech.clear();
             speech.addAll(phrases);
+            inflight = phrases.size();
         }
-        inflight = phrases.size();
         setState(SPEAKING);
         main.postDelayed(watch, 150);
         // Один поток на реплику: фразы уходят в синтез по очереди, иначе звук перемешается.
@@ -238,7 +242,10 @@ public final class CascadeHttp implements VoiceEngine {
             public void run() {
                 while (running && gen == generation) {
                     String next;
-                    synchronized (speech) {
+                    synchronized (ttsLock) {
+                        if (!running || gen != generation) {
+                            return;
+                        }
                         next = speech.poll();
                     }
                     if (next == null) {
@@ -273,9 +280,12 @@ public final class CascadeHttp implements VoiceEngine {
             speakSystem(phrase, gen); // хоть какой-то звук лучше молчания
             return; // Main dispatch owns this phrase's inflight decrement.
         } else {
-            AudioOut o = out;
-            if (o != null) {
-                o.write(pcm, pcm.length);
+            synchronized (ttsLock) {
+                if (gen != generation || !running) return;
+                AudioOut o = out;
+                if (o != null) {
+                    o.write(pcm, pcm.length);
+                }
             }
         }
         done(gen);
@@ -361,18 +371,20 @@ public final class CascadeHttp implements VoiceEngine {
     /** Перебивание кнопкой: глушим озвучку и продолжаем слушать. */
     @Override
     public void interrupt() {
+        CascadeStt s = stt;
+        if (s != null) s.cancelPendingTranscription();
         stopSpeech();
     }
 
     public void stopSpeech() {
-        generation++;
-        synchronized (speech) {
+        synchronized (ttsLock) {
+            generation++;
             speech.clear();
-        }
-        inflight = 0;
-        AudioOut o = out;
-        if (o != null) {
-            o.flush();
+            inflight = 0;
+            AudioOut o = out;
+            if (o != null) {
+                o.flush();
+            }
         }
         SystemTts t = fallbackTts;
         if (t != null) {
@@ -386,7 +398,7 @@ public final class CascadeHttp implements VoiceEngine {
     private boolean quiet() {
         AudioOut o = out;
         boolean queueEmpty;
-        synchronized (speech) {
+        synchronized (ttsLock) {
             queueEmpty = speech.isEmpty();
         }
         return queueEmpty && inflight <= 0 && pendingSystemSpeech.isEmpty()
@@ -409,15 +421,12 @@ public final class CascadeHttp implements VoiceEngine {
 
     @Override
     public void sendText(final String text) {
-        if (text == null || text.trim().length() == 0) {
-            return;
-        }
+        if (text == null || text.trim().length() == 0) return;
         main.post(new Runnable() {
-            @Override
-            public void run() {
-                if (!running) {
-                    return;
-                }
+            @Override public void run() {
+                if (!running) return;
+                CascadeStt s = stt;
+                if (s != null) s.cancelPendingTranscription();
                 stopSpeech();
                 onUserText(text.trim());
             }
@@ -427,39 +436,32 @@ public final class CascadeHttp implements VoiceEngine {
     @Override
     public void stop() {
         Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                releaseAll();
-            }
+            @Override public void run() { releaseAll(); }
         };
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            r.run();
-        } else {
-            main.post(r);
-        }
+        if (Looper.myLooper() == Looper.getMainLooper()) r.run(); else main.post(r);
     }
 
     private void releaseAll() {
-        running = false;
+        synchronized (ttsLock) {
+            running = false;
+            generation++;
+            speech.clear();
+            AudioOut a = out;
+            out = null;
+            if (a != null) {
+                a.stop();
+            }
+        }
         state = IDLE;
-        generation++;
         CascadeStt s = stt;
         stt = null;
         if (s != null) {
             s.stop();
         }
-        AudioOut a = out;
-        out = null;
-        if (a != null) {
-            a.stop();
-        }
         SystemTts t = fallbackTts;
         fallbackTts = null;
         if (t != null) {
             t.release();
-        }
-        synchronized (speech) {
-            speech.clear();
         }
         inflight = 0;
         pendingSystemSpeech.clear();

@@ -60,6 +60,7 @@ public final class CascadeStt implements AudioIn.Listener {
     private volatile boolean paused;
     private volatile int epoch;
     private boolean transcribing; // guarded by lock; held through queued delivery
+    private long pauseRevision; // guarded by lock; every external pause decision wins over queued idle
     private String apiKey = "";
 
     public CascadeStt(Context ctx, Model model, String language) {
@@ -103,15 +104,25 @@ public final class CascadeStt implements AudioIn.Listener {
 
     /** Включить/выключить полудуплекс (true — микрофон не разбирается). */
     public void setPaused(boolean p) {
-        paused = p;
-        if (p) {
-            Vad v = vad;
-            if (v != null) {
-                v.reset();
-            }
-            synchronized (lock) {
+        synchronized (lock) {
+            pauseRevision++;
+            paused = p;
+            if (p) {
+                Vad v = vad;
+                if (v != null) v.reset();
                 capture.reset();
             }
+        }
+    }
+
+    /** Отменить текущую транскрипцию и её отложенные колбэки; HTTP-запрос может завершиться позже.
+     * Не меняет паузу: вызывающий сам выбирает её через setPaused. */
+    public void cancelPendingTranscription() {
+        synchronized (lock) {
+            epoch++;
+            transcribing = false;
+            pauseRevision++;
+            capture.reset();
         }
     }
 
@@ -138,8 +149,13 @@ public final class CascadeStt implements AudioIn.Listener {
     }
 
     public void stop() {
-        running = false;
-        epoch++;
+        synchronized (lock) {
+            running = false;
+            epoch++;
+            pauseRevision++;
+            transcribing = false;
+            capture.reset();
+        }
         AudioIn a = in;
         in = null;
         if (a != null) {
@@ -160,9 +176,15 @@ public final class CascadeStt implements AudioIn.Listener {
         if (v == null || !running) {
             return;
         }
-        if (paused) {
-            v.reset();
-            return;
+        final long frameRevision;
+        final int frameEpoch;
+        synchronized (lock) {
+            if (paused || !running) {
+                v.reset();
+                return;
+            }
+            frameRevision = pauseRevision;
+            frameEpoch = epoch;
         }
         boolean speechFrame = v.feed(chunk, len);
         if (v.speechStarted()) {
@@ -189,13 +211,14 @@ public final class CascadeStt implements AudioIn.Listener {
         if (v.speechEnded()) {
             byte[] pcm;
             synchronized (lock) {
+                if (!running || paused || epoch != frameEpoch || pauseRevision != frameRevision) return;
                 pcm = capture.toByteArray();
                 capture.reset();
             }
             if (pcm.length < MIN_UTTERANCE_BYTES) {
-                postIdle();
+                postIdle(frameEpoch, frameRevision, false);
             } else {
-                transcribe(pcm);
+                transcribe(pcm, frameEpoch, frameRevision);
             }
         }
     }
@@ -209,11 +232,12 @@ public final class CascadeStt implements AudioIn.Listener {
         post(new Runnable() {
             @Override
             public void run() {
-                Listener l = listener;
-                running = false;
-                synchronized (lock) { transcribing = false; }
-                if (l != null) {
-                    l.onError(message);
+                synchronized (lock) {
+                    if (gen != epoch) return;
+                    Listener l = listener;
+                    running = false;
+                    transcribing = false;
+                    if (l != null) l.onError(message);
                 }
             }
         }, gen);
@@ -222,14 +246,24 @@ public final class CascadeStt implements AudioIn.Listener {
     // ----------------------------------------------------------------- STT
 
     private void transcribe(final byte[] pcm) {
+        synchronized (lock) { transcribe(pcm, epoch, pauseRevision); }
+    }
+
+    private void transcribe(final byte[] pcm, final int frameEpoch, final long frameRevision) {
         final int gen;
+        final long revision;
         synchronized (lock) {
-            if (!running || transcribing) return;
+            if (!running || paused || transcribing || epoch != frameEpoch
+                    || pauseRevision != frameRevision) return;
             transcribing = true;
             gen = epoch;
+            revision = ++pauseRevision;
+            // The request owns this pause until delivery, unless the caller changes it.
+            paused = true;
+            Vad v = vad;
+            if (v != null) v.reset();
+            capture.reset();
         }
-        // Half-duplex: do not capture a second utterance while this request is pending.
-        setPaused(true);
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -253,7 +287,7 @@ public final class CascadeStt implements AudioIn.Listener {
                 }
                 String text = transcript(r.text);
                 if (text.length() == 0) {
-                    postIdle(gen);
+                    postIdle(gen, revision, true);
                     return;
                 }
                 deliver(text, gen);
@@ -298,17 +332,24 @@ public final class CascadeStt implements AudioIn.Listener {
         return language.length() >= 2 ? language.substring(0, 2) : "ru";
     }
 
-    private void postIdle() { postIdle(epoch); }
+    private void postIdle() {
+        final int gen;
+        final long revision;
+        synchronized (lock) { gen = epoch; revision = pauseRevision; }
+        postIdle(gen, revision, false);
+    }
 
-    private void postIdle(final int gen) {
+    private void postIdle(final int gen, final long revision, final boolean request) {
         post(new Runnable() {
             @Override
             public void run() {
-                Listener l = listener;
-                synchronized (lock) { transcribing = false; }
-                if (running) setPaused(false);
-                if (l != null && running) {
-                    l.onIdle();
+                synchronized (lock) {
+                    if (!running || gen != epoch) return;
+                    if (request) transcribing = false;
+                    if (revision != pauseRevision) return;
+                    if (request) paused = false;
+                    Listener l = listener;
+                    if (l != null) l.onIdle();
                 }
             }
         }, gen);
@@ -318,10 +359,11 @@ public final class CascadeStt implements AudioIn.Listener {
         post(new Runnable() {
             @Override
             public void run() {
-                Listener l = listener;
-                synchronized (lock) { transcribing = false; }
-                if (l != null && running) {
-                    l.onText(text);
+                synchronized (lock) {
+                    if (!running || gen != epoch) return;
+                    Listener l = listener;
+                    transcribing = false;
+                    if (l != null) l.onText(text);
                 }
             }
         }, gen);
