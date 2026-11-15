@@ -41,6 +41,13 @@ public class MainActivity extends BaseActivity {
     private ListView list;
     private View empty;
 
+    // Шторка с историей чатов, моделями и настройками.
+    private View drawer, scrim;
+    private ListView drawerList;
+    private boolean drawerOpen;
+    private final List<ChatStore.Chat> drawerItems = new ArrayList<ChatStore.Chat>();
+    private ArrayAdapter<ChatStore.Chat> drawerAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,24 +90,133 @@ public class MainActivity extends BaseActivity {
             }
         });
 
-        ((Button) findViewById(R.id.btn_new_chat)).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btn_new_chat).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 newChat();
             }
         });
-        ((Button) findViewById(R.id.btn_models)).setOnClickListener(new View.OnClickListener() {
+
+        // --- Шторка ---
+        drawer = findViewById(R.id.drawer);
+        scrim = findViewById(R.id.drawer_scrim);
+        drawerList = (ListView) findViewById(R.id.drawer_list);
+        drawerAdapter = new ArrayAdapter<ChatStore.Chat>(this, R.layout.item_chat, drawerItems) {
+            @Override
+            public View getView(int position, View convert, ViewGroup parent) {
+                View row = convert;
+                if (row == null) {
+                    row = getLayoutInflater().inflate(R.layout.item_chat, parent, false);
+                }
+                ChatStore.Chat c = drawerItems.get(position);
+                TextView title = (TextView) row.findViewById(R.id.chat_title);
+                TextView meta = (TextView) row.findViewById(R.id.chat_meta);
+                String name = c.title == null || c.title.length() == 0
+                        ? getString(R.string.chat_untitled) : c.title;
+                title.setText(name);
+                meta.setText(getString(R.string.chat_meta, modelName(c.modelId), when(c.updatedAt)));
+                return row;
+            }
+        };
+        drawerList.setAdapter(drawerAdapter);
+        drawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                closeDrawer();
+                openChat(drawerItems.get(position).id);
+            }
+        });
+        drawerList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                chatMenu(drawerItems.get(position));
+                return true;
+            }
+        });
+        findViewById(R.id.btn_drawer).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (drawerOpen) {
+                    closeDrawer();
+                } else {
+                    openDrawer();
+                }
+            }
+        });
+        scrim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
+            }
+        });
+        findViewById(R.id.drawer_new_chat).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
+                newChat();
+            }
+        });
+        findViewById(R.id.drawer_models).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
                 startActivity(new Intent(MainActivity.this, ModelsActivity.class));
             }
         });
-        ((Button) findViewById(R.id.btn_settings)).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.drawer_settings).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                closeDrawer();
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
+        TextView drawerVersion = (TextView) findViewById(R.id.drawer_version);
+        drawerVersion.setText(getString(R.string.version_row) + " " + appVersion());
+    }
+
+    private String appVersion() {
+        try {
+            android.content.pm.PackageInfo pi =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            return pi.versionName;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            return "";
+        }
+    }
+
+    private void openDrawer() {
+        drawerItems.clear();
+        drawerItems.addAll(chats.chats());
+        drawerAdapter.notifyDataSetChanged();
+        drawerOpen = true;
+        drawer.animate().translationX(0f).setDuration(180).start();
+        scrim.setVisibility(View.VISIBLE);
+        scrim.animate().alpha(1f).setDuration(180).start();
+    }
+
+    private void closeDrawer() {
+        if (!drawerOpen) {
+            return;
+        }
+        drawerOpen = false;
+        drawer.animate().translationX(-drawer.getWidth()).setDuration(160).start();
+        scrim.animate().alpha(0f).setDuration(160).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                if (!drawerOpen) {
+                    scrim.setVisibility(View.GONE);
+                }
+            }
+        }).start();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerOpen) {
+            closeDrawer();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override

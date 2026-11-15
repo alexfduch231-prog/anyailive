@@ -178,6 +178,15 @@ public class ChatActivity extends BaseActivity {
                 newChatDialog();
             }
         });
+        findViewById(R.id.drawer_settings).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
+                startActivity(new Intent(ChatActivity.this, SettingsActivity.class));
+            }
+        });
+        TextView drawerVersion = (TextView) findViewById(R.id.drawer_version);
+        drawerVersion.setText(getString(R.string.version_row) + " " + appVersion());
         header.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -202,6 +211,25 @@ public class ChatActivity extends BaseActivity {
                 return true;
             }
         });
+    }
+
+    private String appVersion() {
+        try {
+            android.content.pm.PackageInfo pi =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            return pi.versionName;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            return "";
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerOpen) {
+            closeDrawer();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     /** Выездная шторка: подгружаем свежий список чатов и показываем. */
