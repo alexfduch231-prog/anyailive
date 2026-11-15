@@ -1,0 +1,18 @@
+{
+  "provider": "inception",
+  "requested_model": "mercury-3",
+  "task": "Audio output buffering stop flush and playback accounting",
+  "files": [
+    "app/src/ru/alexv/anyailive/voice/AudioOut.java",
+    "app/src/ru/alexv/anyailive/voice/AudioOutBuffer.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 11749,
+  "status": "error",
+  "error_type": "RuntimeError",
+  "elapsed_seconds": 3.5
+}

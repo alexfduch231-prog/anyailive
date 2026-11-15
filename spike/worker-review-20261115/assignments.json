@@ -1,0 +1,224 @@
+[
+  {
+    "provider": "vyceai",
+    "requested_model": "deepseek-v4.1",
+    "ready": true,
+    "task": "STT concurrency and stale dispatch",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/CascadeStt.java",
+      "app/src/ru/alexv/anyailive/voice/Vad.java"
+    ]
+  },
+  {
+    "provider": "groq",
+    "requested_model": "qwen/qwen3.8-27b",
+    "ready": true,
+    "task": "HTTP cascade chat generation and interrupt state transitions",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/CascadeHttp.java"
+    ]
+  },
+  {
+    "provider": "gemini",
+    "requested_model": "gemini-3.5-flash",
+    "ready": true,
+    "task": "System TTS startup backlog and asynchronous completion",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/SystemTts.java",
+      "app/src/ru/alexv/anyailive/voice/PendingSpeechQueue.java"
+    ]
+  },
+  {
+    "provider": "cerebras",
+    "requested_model": "gpt-oss-120b",
+    "ready": false,
+    "task": "Realtime OpenAI playback clock and cancel handling",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/LiveEngineOpenAI.java"
+    ]
+  },
+  {
+    "provider": "mistral",
+    "requested_model": "mistral-small-latest",
+    "ready": false,
+    "task": "Gemini realtime protocol events and shutdown handling",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/LiveEngineGemini.java"
+    ]
+  },
+  {
+    "provider": "inception",
+    "requested_model": "mercury-3",
+    "ready": true,
+    "task": "Audio output buffering stop flush and playback accounting",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/AudioOut.java",
+      "app/src/ru/alexv/anyailive/voice/AudioOutBuffer.java"
+    ]
+  },
+  {
+    "provider": "openrouter",
+    "requested_model": "openrouter/free",
+    "ready": true,
+    "task": "Microphone recorder resources and thread termination",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/AudioIn.java"
+    ]
+  },
+  {
+    "provider": "orcarouter",
+    "requested_model": "orcarouter/free",
+    "ready": true,
+    "task": "Private history RAM/disk ordering and toggles",
+    "files": [
+      "app/src/ru/alexv/anyailive/data/ChatStore.java",
+      "app/src/ru/alexv/anyailive/data/MemoryHistory.java"
+    ]
+  },
+  {
+    "provider": "oxionai",
+    "requested_model": "claude-opus-5.5",
+    "ready": true,
+    "task": "Settings persistence and model-first voice policies",
+    "files": [
+      "app/src/ru/alexv/anyailive/data/SettingsStore.java",
+      "app/src/ru/alexv/anyailive/ui/VoiceConfig.java"
+    ]
+  },
+  {
+    "provider": "anyrouter",
+    "requested_model": "minimax/minimax-m3.1-flash:free",
+    "ready": true,
+    "task": "Release signing and test gates",
+    "files": [
+      "build.ps1",
+      "release.ps1",
+      "test.ps1",
+      "app/src/ru/alexv/anyailive/TestMain.java"
+    ]
+  },
+  {
+    "provider": "codexrelay",
+    "requested_model": "glm-5.3-flash",
+    "ready": true,
+    "task": "Chat screen late callbacks and lifecycle closure",
+    "files": [
+      "app/src/ru/alexv/anyailive/ui/ChatActivity.java",
+      "app/src/ru/alexv/anyailive/ui/ChatSessionCallbacks.java"
+    ]
+  },
+  {
+    "provider": "dahl",
+    "requested_model": "zai-org/GLM-5.3-Flash",
+    "ready": true,
+    "task": "Live screen lifecycle and assistant audio persistence",
+    "files": [
+      "app/src/ru/alexv/anyailive/ui/LiveActivity.java",
+      "app/src/ru/alexv/anyailive/ui/LiveSessionCallbacks.java"
+    ]
+  },
+  {
+    "provider": "clawlabs",
+    "requested_model": "abliterated-large-v2",
+    "ready": true,
+    "task": "Streaming chat cancellation and SSE completeness",
+    "files": [
+      "app/src/ru/alexv/anyailive/chat/ChatClient.java",
+      "app/src/ru/alexv/anyailive/net/SseParser.java"
+    ]
+  },
+  {
+    "provider": "carbon",
+    "requested_model": "gemini-4-carbon:free",
+    "ready": true,
+    "task": "Secret storage backup and database initialization",
+    "files": [
+      "app/src/ru/alexv/anyailive/data/SecretStore.java",
+      "app/src/ru/alexv/anyailive/data/Db.java",
+      "app/AndroidManifest.xml"
+    ]
+  },
+  {
+    "provider": "kilo",
+    "requested_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "ready": true,
+    "task": "WAV and multipart STT byte format correctness",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/TranscriptionBody.java",
+      "app/src/ru/alexv/anyailive/voice/HttpWire.java",
+      "app/src/ru/alexv/anyailive/voice/Wav.java"
+    ]
+  },
+  {
+    "provider": "vireonix",
+    "requested_model": "auto",
+    "ready": true,
+    "task": "JSON parser malformed input behavior",
+    "files": [
+      "app/src/ru/alexv/anyailive/json/Json.java"
+    ]
+  },
+  {
+    "provider": "xkiro",
+    "requested_model": "mistralai/codestral-2508",
+    "ready": true,
+    "task": "System speech recognizer and cascade recovery",
+    "files": [
+      "app/src/ru/alexv/anyailive/voice/SystemStt.java",
+      "app/src/ru/alexv/anyailive/voice/CascadeSystem.java"
+    ]
+  },
+  {
+    "provider": "intern",
+    "requested_model": "deepseek-v4-pro-0813",
+    "ready": true,
+    "task": "Model edit and endpoint validation",
+    "files": [
+      "app/src/ru/alexv/anyailive/ui/ModelEditActivity.java",
+      "app/src/ru/alexv/anyailive/data/ModelsStore.java"
+    ]
+  },
+  {
+    "provider": "moonmath",
+    "requested_model": "deepseek-v4.1-flash",
+    "ready": true,
+    "task": "Audio export and local recording privacy",
+    "files": [
+      "app/src/ru/alexv/anyailive/ui/Exporter.java",
+      "app/src/ru/alexv/anyailive/data/Model.java"
+    ]
+  },
+  {
+    "provider": "itera",
+    "requested_model": "qwen/qwen3.8-27b",
+    "ready": true,
+    "task": "Settings UI application and TTS selection policy",
+    "files": [
+      "app/src/ru/alexv/anyailive/ui/SettingsActivity.java",
+      "app/src/ru/alexv/anyailive/voice/TtsEnginePolicy.java",
+      "app/src/ru/alexv/anyailive/voice/TtsRoutingPolicy.java"
+    ]
+  },
+  {
+    "provider": "local",
+    "requested_model": "unavailable",
+    "ready": false,
+    "task": "HTTP chat transport and provider error handling",
+    "files": [
+      "app/src/ru/alexv/anyailive/net/Http.java",
+      "app/src/ru/alexv/anyailive/chat/Providers.java",
+      "app/src/ru/alexv/anyailive/chat/ChatLink.java"
+    ]
+  },
+  {
+    "provider": "codexrelay-gpt61",
+    "requested_model": "gpt-6.1-sol",
+    "ready": true,
+    "task": "Test blind spots in lifecycle fixtures",
+    "files": [
+      "spike/lifecycle-test/CascadeLifecycleTest.java",
+      "spike/lifecycle-test/android/os/Handler.java",
+      "spike/verify_cascade_lifecycle.py"
+    ]
+  }
+]

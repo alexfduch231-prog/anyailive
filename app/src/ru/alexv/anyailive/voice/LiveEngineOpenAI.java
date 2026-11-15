@@ -54,24 +54,21 @@ public class LiveEngineOpenAI implements VoiceEngine {
     private volatile boolean running, ready;
     private volatile int state = IDLE;
     private volatile String lastUserText = "", lastAssistantText = "";
+    private volatile PlaybackClock clock;
     private int pendingLen, attempts;
     private String itemId;
-    private long playedMs;
+    private long itemMs, itemBaselineMs = -1;
     public LiveEngineOpenAI(Model model, String apiKey, String systemPrompt) {
         this.model = model == null ? new Model() : model;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.systemPrompt = systemPrompt == null ? "" : systemPrompt;
     }
-    public void setSink(Sink s) {
-        this.sink = s;
-    }
+    public void setSink(Sink s) { this.sink = s; }
+    /** Часы AudioOut (обычно out::playedMillis). Без них перебивание честно сообщает 0 мс. */
+    public void setPlaybackClock(PlaybackClock c) { this.clock = c; }
     /** @return последняя финальная реплика ассистента (то, что успел услышать человек). */
-    public String getLastAssistantText() {
-        return lastAssistantText;
-    }
-    public boolean isRunning() {
-        return running;
-    }
+    public String getLastAssistantText() { return lastAssistantText; }
+    public boolean isRunning() { return running; }
     // ------------------------------------------------------------------ VoiceEngine
 
     @Override
@@ -79,12 +76,10 @@ public class LiveEngineOpenAI implements VoiceEngine {
         this.cb = callback;
         if (running) return;
         if (apiKey.length() == 0) {
-            fail("Не задан ключ API для этой модели - добавьте его в каталоге моделей.");
-            return;
+            fail("Не задан ключ API для этой модели - добавьте его в каталоге моделей."); return;
         }
         if (realtimeUrl(model).length() == 0) {
-            fail("Не задан адрес realtime-эндпоинта: заполните baseUrl или liveUrl у модели.");
-            return;
+            fail("Не задан адрес realtime-эндпоинта: заполните baseUrl или liveUrl у модели."); return;
         }
         running = true;
         spawn(0, "vb-live-openai");
@@ -93,11 +88,8 @@ public class LiveEngineOpenAI implements VoiceEngine {
     public void stop() {
         running = false;
         ready = false;
-        itemId = null;
-        playedMs = 0;
-        synchronized (writeLock) {
-            pendingLen = 0;
-        }
+        resetItem();
+        synchronized (writeLock) { pendingLen = 0; }
         Ws w = ws;
         ws = null;
         if (w != null) w.close();
@@ -132,20 +124,7 @@ public class LiveEngineOpenAI implements VoiceEngine {
         }
     }
     /** Перебивание снаружи (кнопка UI): отменяем ответ и обрезаем недоигранное аудио. */
-    public void interrupt() {
-        Ws w = ws;
-        if (w == null) return;
-        w.send(Json.write().put("type", "response.cancel").done());
-        if (itemId != null) {
-            w.send(Json.write().put("type", "conversation.item.truncate").put("item_id", itemId)
-                    .put("content_index", 0L).put("audio_end_ms", playedMs).done());
-        }
-        itemId = null;
-        playedMs = 0;
-        emitState(LISTENING);
-        Sink s = sink;
-        if (s != null) s.onBargeIn();
-    }
+    public void interrupt() { cut(true); }
     // ------------------------------------------------------------------ протокол (static, тестируемое)
 
     /** session.update строго по GA-схеме: вложенный audio.input/audio.output, output_modalities. */
@@ -260,11 +239,8 @@ public class LiveEngineOpenAI implements VoiceEngine {
         Ws old = ws;
         if (old != null) old.close();
         ready = false;
-        itemId = null;
-        playedMs = 0;
-        synchronized (writeLock) {
-            pendingLen = 0;
-        }
+        resetItem();
+        synchronized (writeLock) { pendingLen = 0; }
         final Ws w = new Ws();
         ws = w;
         final String url = realtimeUrl(model);
@@ -276,10 +252,7 @@ public class LiveEngineOpenAI implements VoiceEngine {
                 w.send(buildSessionUpdate(model, instructionsWithHistory()));
                 emitState(LISTENING);
             }
-            @Override
-            public void onText(String json) {
-                dispatch(json);
-            }
+            @Override public void onText(String json) { dispatch(json); }
             @Override
             public void onClosed(String reason) {
                 ready = false;
@@ -303,18 +276,10 @@ public class LiveEngineOpenAI implements VoiceEngine {
         }
     }
     private void spawn(final long delay, String name) {
-        final LiveEngineOpenAI self = this;
         Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                if (delay > 0) {
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                }
-                self.connect();
+            @Override public void run() {
+                if (delay > 0) try { Thread.sleep(delay); } catch (InterruptedException e) { return; }
+                connect();
             }
         }, name);
         t.setDaemon(true);
@@ -363,9 +328,7 @@ public class LiveEngineOpenAI implements VoiceEngine {
         } else if (k == SPEECH_STOPPED) {
             emitState(THINKING);
         } else if (k == TURN_DONE) {
-            flushAssistantTurn();
-            itemId = null;
-            playedMs = 0;
+            flushAssistantTurn(); // itemId остаётся: пока очередь доигрывает, кнопка ещё может обрезать
             emitState(LISTENING);
         } else if (k == CLOSED) {
             ready = false;
@@ -377,18 +340,26 @@ public class LiveEngineOpenAI implements VoiceEngine {
         }
     }
     /** Человек заговорил поверх ответа: гасим звук, модель узнаёт, что её не дослушали. */
-    private void bargeIn() {
-        itemId = null;
-        playedMs = 0;
+    private void bargeIn() { cut(false); flushAssistantTurn(); } // ответ сервер отменил сам
+    /** Перебивание: cancel (если нужен), truncate по ФАКТИЧЕСКИ проигранному, сброс item, LISTENING.
+     * Truncate уходит до onBargeIn: вызывающий делает AudioOut.flush(), а тот обнуляет часы. */
+    private void cut(boolean cancel) {
+        Ws w = ws;
+        if (w == null) return;
+        if (cancel) w.send(Json.write().put("type", "response.cancel").done());
+        if (itemId != null) w.send(truncateMessage(itemId, playedSince(itemBaselineMs, clockMs(), itemMs)));
+        resetItem();
         emitState(LISTENING);
-        flushAssistantTurn();
         Sink s = sink;
         if (s != null) s.onBargeIn();
     }
     private void onAudio(Map<String, Object> o) {
-        String id = Json.str(o.get("item_id"));
-        if (id == null) id = Json.str(o.get("response_id"));
-        if (id != null) itemId = id;
+        String id = Json.str(o.get("item_id")); // response_id - не item_id: обрезать по нему нельзя
+        if (id != null && !id.equals(itemId)) { // новый item: свой отсчёт принятого и проигранного
+            itemId = id;
+            itemMs = 0;
+            itemBaselineMs = -1;
+        }
         String data = Json.str(o.get("delta"));
         if (data == null) data = Json.str(o.get("audio"));
         byte[] pcm;
@@ -398,7 +369,10 @@ public class LiveEngineOpenAI implements VoiceEngine {
             return; // битый base64 одного фрейма не должен ронять сессию
         }
         if (pcm.length == 0) return;
-        playedMs += pcm.length / 48; // 24 кГц * 2 байта = 48 байт на мс
+        if (itemId != null) {
+            if (itemBaselineMs < 0) itemBaselineMs = clockMs(); // проигранное на момент старта item
+            itemMs += pcm.length / 48; // 24 кГц * 2 байта = 48 байт на мс
+        }
         emitState(SPEAKING);
         Sink s = sink;
         if (s != null && running) s.onAudio(pcm);
@@ -413,10 +387,7 @@ public class LiveEngineOpenAI implements VoiceEngine {
         w.send(Json.write().put("type", "input_audio_buffer.append")
                 .put("audio", B64.encode(upsample16to24(chunk))).done());
     }
-    private void send(String json) {
-        Ws w = ws;
-        if (w != null) w.send(json);
-    }
+    private void send(String json) { Ws w = ws; if (w != null) w.send(json); }
     // ------------------------------------------------------------------ текст и состояние
 
     private void finishUserTurn() {
@@ -438,8 +409,7 @@ public class LiveEngineOpenAI implements VoiceEngine {
         if (c != null) c.onAssistantText(t);
     }
     private void remember(String line) {
-        history.add(line);
-        while (history.size() > HISTORY_LIMIT) history.remove(0);
+        history.add(line); while (history.size() > HISTORY_LIMIT) history.remove(0);
     }
     /** instructions новой сессии: системная подсказка + последние 20 реплик локальной истории. */
     private String instructionsWithHistory() {
@@ -482,16 +452,13 @@ public class LiveEngineOpenAI implements VoiceEngine {
     // ------------------------------------------------------------------ мелочи
 
     private static String textOf(Map<String, Object> o, String field) {
-        String t = Json.str(o.get(field));
-        if (t == null) t = Json.str(o.get("text"));
+        String t = Json.str(o.get(field)); if (t == null) t = Json.str(o.get("text"));
         return t == null ? "" : t;
     }
     private static int sample(byte[] pcm, int i) {
-        return (short) (((pcm[2 * i + 1] & 0xff) << 8) | (pcm[2 * i] & 0xff));
-    }
+        return (short) (((pcm[2 * i + 1] & 0xff) << 8) | (pcm[2 * i] & 0xff)); }
     private static String voiceOf(Model m) {
-        String v = m == null || m.voice == null ? "" : m.voice.trim();
-        return v.length() == 0 ? DEFAULT_VOICE : v;
+        String v = m == null || m.voice == null ? "" : m.voice.trim(); return v.length() == 0 ? DEFAULT_VOICE : v;
     }
     private static String liveModelOf(Model m) {
         if (m == null) return "";
@@ -502,11 +469,29 @@ public class LiveEngineOpenAI implements VoiceEngine {
     /** Экранирование значения в query, чтобы экзотика в id модели не ломала URL. */
     private static String query(String id) {
         String s = id == null ? "" : id;
-        StringBuilder b = new StringBuilder(s.length());
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            b.append(" &+#?".indexOf(c) >= 0 ? "%" + Integer.toHexString(c) : String.valueOf(c));
-        }
-        return b.toString();
+        return s.replace("%", "%25").replace(" ", "%20").replace("&", "%26")
+                .replace("+", "%2B").replace("#", "%23").replace("?", "%3F");
+    }
+
+    // ------------------------------------------------------------------ часы воспроизведения
+
+    /** Часы AudioOut: сколько мс реально проиграно с последнего flush (AudioOut.playedMillis()). */
+    public interface PlaybackClock {
+        long playedMs();
+    }
+
+    /** -1 = часов нет: перебивание тогда сообщает 0, а не «сколько приняли». */
+    private long clockMs() { PlaybackClock c = clock; return c == null ? -1 : c.playedMs(); }
+    private void resetItem() { itemId = null; itemMs = 0; itemBaselineMs = -1; }
+    /** Сколько мс ответа реально проиграно: 0 без часов/отметки и не больше принятого. */
+    public static long playedSince(long baselineMs, long clockMs, long receivedMs) {
+        if (baselineMs < 0 || clockMs < 0 || clockMs <= baselineMs || receivedMs <= 0) return 0;
+        return Math.min(clockMs - baselineMs, receivedMs);
+    }
+    /** Тело conversation.item.truncate: audio_end_ms — проигранное, не принятое. */
+    public static String truncateMessage(String itemId, long audioEndMs) {
+        long ms = audioEndMs < 0 ? 0 : audioEndMs;
+        return Json.write().put("type", "conversation.item.truncate").put("item_id", itemId)
+                .put("content_index", 0L).put("audio_end_ms", ms).done();
     }
 }

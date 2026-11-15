@@ -1,0 +1,19 @@
+{
+  "provider": "vyceai",
+  "requested_model": "deepseek-v4.1",
+  "task": "STT concurrency and stale dispatch",
+  "files": [
+    "app/src/ru/alexv/anyailive/voice/CascadeStt.java",
+    "app/src/ru/alexv/anyailive/voice/Vad.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 18772,
+  "status": "error",
+  "error_type": "HTTPError",
+  "http_status": 503,
+  "elapsed_seconds": 0.66
+}

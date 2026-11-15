@@ -1,0 +1,19 @@
+{
+  "provider": "itera",
+  "requested_model": "qwen/qwen3.8-27b",
+  "task": "Settings UI application and TTS selection policy",
+  "files": [
+    "app/src/ru/alexv/anyailive/ui/SettingsActivity.java",
+    "app/src/ru/alexv/anyailive/voice/TtsEnginePolicy.java",
+    "app/src/ru/alexv/anyailive/voice/TtsRoutingPolicy.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 11930,
+  "status": "error",
+  "error_type": "TimeoutError",
+  "elapsed_seconds": 60.61
+}

@@ -1,0 +1,21 @@
+{
+  "provider": "anyrouter",
+  "requested_model": "minimax/minimax-m3.1-flash:free",
+  "task": "Release signing and test gates",
+  "files": [
+    "build.ps1",
+    "release.ps1",
+    "test.ps1",
+    "app/src/ru/alexv/anyailive/TestMain.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 13592,
+  "status": "error",
+  "error_type": "HTTPError",
+  "http_status": 403,
+  "elapsed_seconds": 2.65
+}

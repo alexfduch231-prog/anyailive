@@ -1,0 +1,17 @@
+{
+  "provider": "openrouter",
+  "requested_model": "openrouter/free",
+  "task": "Microphone recorder resources and thread termination",
+  "files": [
+    "app/src/ru/alexv/anyailive/voice/AudioIn.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 13394,
+  "status": "error",
+  "error_type": "RuntimeError",
+  "elapsed_seconds": 16.77
+}

@@ -9,6 +9,7 @@ public class SettingsStore {
     public static final String ENGINE = "engine";              // auto | live | cascade
     public static final String STT_MODEL = "stt_model";
     public static final String TTS_MODEL = "tts_model";
+    public static final String TTS_ENGINE = "tts_engine_package";
     public static final String VOICE = "voice";
     public static final String LANGUAGE = "language";
     public static final String BARGE_IN = "barge_in";          // "1" | "0"

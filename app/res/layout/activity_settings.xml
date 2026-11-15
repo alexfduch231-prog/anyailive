@@ -76,6 +76,15 @@
             android:hint="@string/settings_voice_hint"
             android:inputType="text" />
 
+        <TextView
+            style="@style/SettingsLabel"
+            android:text="Системная озвучка — только для anyAIlive" />
+
+        <Spinner
+            android:id="@+id/set_tts_engine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
         <CheckBox
             android:id="@+id/set_barge_in"
             style="@style/SettingsCheck"
@@ -97,6 +106,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/btn_save" />
+
+        <Button
+            android:id="@+id/btn_test_tts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Проверить / остановить системную озвучку" />
 
         <Button
             android:id="@+id/btn_export_all"

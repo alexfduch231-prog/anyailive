@@ -36,6 +36,7 @@ public final class AudioTests {
         sentencesTests();
         cascadeWireTests();
         System.out.println("audio: ok " + passed + ", fail " + failed);
+        if (failed != 0) throw new AssertionError("Audio regression failures: " + failed);
     }
 
     public static void main(String[] args) {

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="ru.alexv.anyailive.cascadeprobe" android:versionCode="1" android:versionName="1.0">
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+    <application android:label="Cascade TTS probe" android:hasCode="true" />
+    <instrumentation android:name="ru.alexv.anyailive.cascadeprobe.CascadeProbe"
+        android:targetPackage="ru.alexv.anyailive" android:functionalTest="true"
+        android:handleProfiling="false" android:label="Partial CascadeHttp TTS integration" />
+</manifest>

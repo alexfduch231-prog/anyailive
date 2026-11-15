@@ -92,6 +92,11 @@
             android:hint="@string/chat_hint"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="4"
+            android:background="@drawable/bg_input"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
             android:textColor="@color/fg"
             android:textColorHint="@color/muted"
             android:textSize="15sp" />

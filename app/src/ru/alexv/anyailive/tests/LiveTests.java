@@ -42,10 +42,34 @@ public class LiveTests {
 
     public static void run() {
         openAi();
+        playbackClock();
         gemini();
         b64();
         System.out.println(fails == 0 ? "PASS " + checks + " checks"
                 : "FAILED " + fails + " of " + checks + " checks");
+        if (fails != 0) throw new AssertionError("Live regression failures: " + fails);
+    }
+
+    // ------------------------------------------- часы воспроизведения (перебивание, OpenAI)
+
+    /** Перебивание обязано называть серверу ПРОИГРАННОЕ время, а не принятое:
+     * иначе модель считает, что человек услышал всю очередь, и её ответ «прыгает». */
+    private static void playbackClock() {
+        ok("oa.playedNoClock", LiveEngineOpenAI.playedSince(-1, 5000, 900) == 0);
+        ok("oa.playedNoClockValue", LiveEngineOpenAI.playedSince(1000, -1, 900) == 0);
+        ok("oa.playedBeforeBaseline", LiveEngineOpenAI.playedSince(1000, 900, 500) == 0);
+        ok("oa.playedNothingReceived", LiveEngineOpenAI.playedSince(0, 900, 0) == 0);
+        ok("oa.playedActualDelta", LiveEngineOpenAI.playedSince(1000, 1300, 400) == 300);
+        ok("oa.playedBoundedByReceived", LiveEngineOpenAI.playedSince(1000, 5000, 400) == 400);
+        Map<String, Object> t = Json.obj(LiveEngineOpenAI.truncateMessage("item_1", 250));
+        ok("oa.truncateBody", "conversation.item.truncate".equals(Json.str(t.get("type")))
+                && "item_1".equals(Json.str(t.get("item_id")))
+                && "0".equals(Json.str(t.get("content_index")))
+                && "250".equals(Json.str(t.get("audio_end_ms"))));
+        ok("oa.truncateNoResponseId", !LiveEngineOpenAI.truncateMessage("item_1", 250)
+                .contains("response_id"));
+        ok("oa.truncateNegativeClamped", "0".equals(Json.str(Json.obj(
+                LiveEngineOpenAI.truncateMessage("item_1", -5)).get("audio_end_ms"))));
     }
 
     // ------------------------------------------------------------------ OpenAI

@@ -1,0 +1,18 @@
+{
+  "provider": "codexrelay",
+  "requested_model": "glm-5.3-flash",
+  "task": "Chat screen late callbacks and lifecycle closure",
+  "files": [
+    "app/src/ru/alexv/anyailive/ui/ChatActivity.java",
+    "app/src/ru/alexv/anyailive/ui/ChatSessionCallbacks.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 21230,
+  "status": "error",
+  "error_type": "RuntimeError",
+  "elapsed_seconds": 27.54
+}

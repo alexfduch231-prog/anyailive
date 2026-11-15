@@ -10,18 +10,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ru.alexv.anyailive.data.Model;
+import ru.alexv.anyailive.data.SettingsStore;
 
 /**
  * Каскад через HTTP OpenAI-совместимого эндпоинта выбранной модели:
  *
  * запись → {@link CascadeStt} (VAD + /audio/transcriptions) → чат через {@link CascadeSystem.Chat}
- * → POST {baseUrl}/audio/speech (response_format=pcm) → динамик.
- *
- * Полудуплекс: пока звучит ответ, микрофон не разбирается (без AEC перебивание голосом
- * ненадёжно) — перебивание кнопкой ({@link #stopSpeech()} / {@link #sendText}).
- *
- * Если /audio/speech нет (400/404/405/501) — один раз переходим на системный TTS и запоминаем
- * это в поле ({@link #usingSystemTts()}), чтобы не тратить время на заведомо неудачные запросы.
+ * → выбранный app-local SystemTts либо POST {baseUrl}/audio/speech → динамик.
+ * Полудуплекс: во время ответа микрофон не разбирается; перебивание — кнопкой.
+ * Если /audio/speech нет (400/404/405/501), запоминаем системный fallback.
+ * Пустой SettingsStore.TTS_ENGINE сохраняет HTTP-синтез с прежним fallback.
  */
 public final class CascadeHttp implements VoiceEngine {
 
@@ -48,11 +46,12 @@ public final class CascadeHttp implements VoiceEngine {
     private volatile boolean running;
     private int state = IDLE;
     private int inflight;
-    private int generation;
+    private volatile int generation;
     private int seq;
     private String apiKey = "";
-    private boolean systemTtsFallback;
-    private boolean fallbackSpeaking;
+    private String selectedTtsEngine;
+    private volatile boolean systemTtsFallback;
+    private final java.util.Set<String> pendingSystemSpeech = new java.util.HashSet<String>();
 
     public CascadeHttp(Context ctx, Model model, CascadeSystem.Chat chat) {
         this(ctx, model, chat, CascadeSystem.DEFAULT_SYSTEM_PROMPT, CascadeSystem.DEFAULT_LANGUAGE);
@@ -76,9 +75,9 @@ public final class CascadeHttp implements VoiceEngine {
         return running;
     }
 
-    /** Серверный синтез отказал, озвучиваем системным TTS. */
+    /** Системный TTS выбран явно либо включён после отказа HTTP-синтеза. */
     public boolean usingSystemTts() {
-        return systemTtsFallback;
+        return TtsRoutingPolicy.useSystemTts(selectedTtsEngine, systemTtsFallback);
     }
 
     // ------------------------------------------------------------- запуск
@@ -88,9 +87,11 @@ public final class CascadeHttp implements VoiceEngine {
         if (callback == null) {
             return;
         }
+        final int gen = generation;
         main.post(new Runnable() {
             @Override
             public void run() {
+                if (gen != generation) return;
                 startNow(callback);
             }
         });
@@ -110,6 +111,7 @@ public final class CascadeHttp implements VoiceEngine {
             return;
         }
         apiKey = CascadeStt.keyFromStore(ctx, model);
+        selectedTtsEngine = new SettingsStore(ctx).get(SettingsStore.TTS_ENGINE, "");
         out = new AudioOut(AudioOut.SAMPLE_RATE, 1);
         if (!out.start()) {
             fail(out.lastError() == null ? "Динамик недоступен" : out.lastError());
@@ -141,7 +143,7 @@ public final class CascadeHttp implements VoiceEngine {
 
         @Override
         public void onIdle() {
-            if (running && state != SPEAKING) {
+            if (running && state == LISTENING) {
                 setState(LISTENING);
             }
         }
@@ -177,10 +179,10 @@ public final class CascadeHttp implements VoiceEngine {
                 try {
                     reply = chat.complete(systemPrompt, msgs, CHAT_TIMEOUT_MS);
                 } catch (IOException e) {
-                    postFail("Нет ответа от модели: " + e.getMessage());
+                    postFail("Нет ответа от модели: " + e.getMessage(), gen);
                     return;
                 } catch (RuntimeException e) {
-                    postFail("Сбой при запросе к модели: " + e.getMessage());
+                    postFail("Сбой при запросе к модели: " + e.getMessage(), gen);
                     return;
                 }
                 if (reply == null || reply.trim().length() == 0) {
@@ -193,7 +195,7 @@ public final class CascadeHttp implements VoiceEngine {
                 main.post(new Runnable() {
                     @Override
                     public void run() {
-                        onReply(r);
+                        if (running && gen == generation) onReply(r);
                     }
                 });
             }
@@ -247,41 +249,37 @@ public final class CascadeHttp implements VoiceEngine {
     // --------------------------------------------------------------- TTS
 
     private void speakPhrase(String phrase, int gen) {
-        if (systemTtsFallback) {
-            speakSystem(phrase);
-            done();
-            return;
+        if (gen != generation || !running) return;
+        if (TtsRoutingPolicy.useSystemTts(selectedTtsEngine, systemTtsFallback)) {
+            speakSystem(phrase, gen);
+            return; // Explicit local selection never reaches /audio/speech.
         }
         String body = HttpWire.ttsJson(ttsModel(), voice(), phrase);
         HttpWire.Bin r = HttpWire.post(HttpWire.url(model.baseUrl, "/audio/speech"),
                 HttpWire.headers(apiKey, model.headers), "application/json",
                 HttpWire.utf8(body), TTS_TIMEOUT_MS);
-        if (gen != generation || !running) {
-            done();
-            return;
-        }
+        if (gen != generation || !running) return;
         byte[] pcm = r.code >= 400 || r.code <= 0 ? null : binaryAudio(r.data);
         if (pcm == null || pcm.length == 0) {
             if (fallbackToSystemTts(r.code)) {
                 systemTtsFallback = true; // у модели нет /audio/speech — больше не пробуем
             }
-            speakSystem(phrase); // хоть какой-то звук лучше молчания
+            speakSystem(phrase, gen); // хоть какой-то звук лучше молчания
+            return; // Main dispatch owns this phrase's inflight decrement.
         } else {
             AudioOut o = out;
             if (o != null) {
                 o.write(pcm, pcm.length);
             }
         }
-        done();
+        done(gen);
     }
 
-    private void done() {
+    private void done(final int gen) {
         main.post(new Runnable() {
             @Override
             public void run() {
-                if (inflight > 0) {
-                    inflight--;
-                }
+                if (gen == generation && inflight > 0) inflight--;
             }
         });
     }
@@ -308,34 +306,43 @@ public final class CascadeHttp implements VoiceEngine {
         return model != null && !empty(model.voice) ? model.voice.trim() : DEFAULT_VOICE;
     }
 
-    private void speakSystem(String phrase) {
-        SystemTts t = fallbackTts;
-        if (t == null) {
-            t = new SystemTts(ctx, language, 0); // 0 — играет сама система
-            t.setCallback(fallbackVoice);
-            fallbackTts = t;
-            if (!t.start()) {
-                return;
+    private void speakSystem(final String phrase, final int gen) {
+        main.post(new Runnable() {
+            @Override
+            public void run() {
+                if (!running || gen != generation) return;
+                try {
+                    SystemTts t = fallbackTts;
+                    if (t == null) {
+                        t = new SystemTts(ctx, language, 0); // 0 — играет сама система
+                        t.setCallback(fallbackVoice);
+                        fallbackTts = t;
+                        if (!t.start()) return;
+                    }
+                    String id = "vb" + (++seq);
+                    pendingSystemSpeech.add(id);
+                    t.speak(phrase, id);
+                } finally {
+                    if (gen == generation && inflight > 0) inflight--;
+                }
             }
-        }
-        fallbackSpeaking = true;
-        t.speak(phrase, "vb" + (++seq));
+        });
     }
 
     private final SystemTts.Callback fallbackVoice = new SystemTts.Callback() {
         @Override
         public void onSpoken(String utteranceId, byte[] pcm) {
-            fallbackSpeaking = false;
+            pendingSystemSpeech.remove(utteranceId);
         }
 
         @Override
         public void onFailed(String utteranceId, String reason) {
-            fallbackSpeaking = false;
+            pendingSystemSpeech.remove(utteranceId);
         }
 
         @Override
         public void onUnavailable(String message) {
-            fallbackSpeaking = false;
+            pendingSystemSpeech.clear();
             if (running) {
                 fail(message);
             }
@@ -365,7 +372,8 @@ public final class CascadeHttp implements VoiceEngine {
         if (t != null) {
             t.stop();
         }
-        fallbackSpeaking = false;
+        pendingSystemSpeech.clear();
+        if (running) setState(LISTENING);
     }
 
     /** Всё доиграло: очередь, сеть, системный TTS и динамик пусты. */
@@ -375,7 +383,8 @@ public final class CascadeHttp implements VoiceEngine {
         synchronized (speech) {
             queueEmpty = speech.isEmpty();
         }
-        return queueEmpty && inflight <= 0 && !fallbackSpeaking && (o == null || !o.isPlaying());
+        return queueEmpty && inflight <= 0 && pendingSystemSpeech.isEmpty()
+                && (o == null || !o.isPlaying());
     }
 
     private final Runnable watch = new Runnable() {
@@ -447,15 +456,15 @@ public final class CascadeHttp implements VoiceEngine {
             speech.clear();
         }
         inflight = 0;
-        fallbackSpeaking = false;
+        pendingSystemSpeech.clear();
         cb = null;
     }
 
-    private void postFail(final String msg) {
+    private void postFail(final String msg, final int gen) {
         main.post(new Runnable() {
             @Override
             public void run() {
-                fail(msg);
+                if (running && gen == generation) fail(msg);
             }
         });
     }

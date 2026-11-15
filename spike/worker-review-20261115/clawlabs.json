@@ -1,0 +1,18 @@
+{
+  "provider": "clawlabs",
+  "requested_model": "abliterated-large-v2",
+  "task": "Streaming chat cancellation and SSE completeness",
+  "files": [
+    "app/src/ru/alexv/anyailive/chat/ChatClient.java",
+    "app/src/ru/alexv/anyailive/net/SseParser.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 12253,
+  "status": "error",
+  "error_type": "URLError",
+  "elapsed_seconds": 0.2
+}

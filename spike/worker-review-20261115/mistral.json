@@ -1,0 +1,15 @@
+{
+  "provider": "mistral",
+  "requested_model": "mistral-small-latest",
+  "task": "Gemini realtime protocol events and shutdown handling",
+  "files": [
+    "app/src/ru/alexv/anyailive/voice/LiveEngineGemini.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "status": "skipped",
+  "reason": "missing_key"
+}

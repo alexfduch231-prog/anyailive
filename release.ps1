@@ -19,9 +19,16 @@ if (-not $Repo) {
     if (Test-Path $rf) { $Repo = (Get-Content $rf -TotalCount 1).Trim() }
 }
 if (-not $Repo) { throw "Pass -Repo owner/name or create repo.txt with one line owner/name" }
+$Repo = $Repo.Trim()
+if ($Repo -notmatch '^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$' -or $Repo -match '^owner/') {
+    throw "Pass a real GitHub owner/repository, not the owner/anyailive placeholder"
+}
+if (-not (Test-Path (Join-Path $ROOT "debug.keystore") -PathType Leaf)) {
+    throw "Release requires the existing debug.keystore; restore the original signing key"
+}
 
 Write-Host "==> build"
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ROOT "build.ps1")
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ROOT "build.ps1") -RequireExistingKey
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
 
 $APK = Join-Path $ROOT "anyailive.apk"

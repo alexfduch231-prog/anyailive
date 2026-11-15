@@ -1,0 +1,18 @@
+{
+  "provider": "moonmath",
+  "requested_model": "deepseek-v4.1-flash",
+  "task": "Audio export and local recording privacy",
+  "files": [
+    "app/src/ru/alexv/anyailive/ui/Exporter.java",
+    "app/src/ru/alexv/anyailive/data/Model.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 7717,
+  "status": "error",
+  "error_type": "RuntimeError",
+  "elapsed_seconds": 17.53
+}

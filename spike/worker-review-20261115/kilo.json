@@ -1,0 +1,19 @@
+{
+  "provider": "kilo",
+  "requested_model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "task": "WAV and multipart STT byte format correctness",
+  "files": [
+    "app/src/ru/alexv/anyailive/voice/TranscriptionBody.java",
+    "app/src/ru/alexv/anyailive/voice/HttpWire.java",
+    "app/src/ru/alexv/anyailive/voice/Wav.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 19512,
+  "status": "error",
+  "error_type": "RuntimeError",
+  "elapsed_seconds": 23.66
+}

@@ -1,5 +1,6 @@
 # ASCII only. anyAIlive APK build without Gradle.
-# Pipeline: aapt2 compile -> aapt2 link -> javac -> jar -> d8 -> aapt add -> zipalign -> apksigner
+# Pipeline: aapt2 compile -> aapt2 link -> javac -> tests -> jar -> d8 -> aapt add -> zipalign -> apksigner
+param([switch]$RequireExistingKey)
 $ErrorActionPreference = "Continue"
 
 $SDK = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA "Android/Sdk" }
@@ -10,6 +11,11 @@ $ROOT = $PSScriptRoot
 $APP   = "$ROOT\app"
 $BUILD = "$ROOT\build"
 $OUT   = "$ROOT\anyailive.apk"
+
+$KS = Join-Path $ROOT "debug.keystore"
+if ($RequireExistingKey -and -not (Test-Path $KS -PathType Leaf)) {
+    throw "Release requires the existing debug.keystore; refusing to generate a new signing identity"
+}
 
 # version.txt: two lines, versionCode=<int> and versionName=<string>
 $VC = 1
@@ -68,6 +74,10 @@ $srcs += (Get-ChildItem -Recurse "$APP\src" -Filter *.java | ForEach-Object { $_
     -bootclasspath "$AJAR" -classpath "$WV" -d "$BUILD\classes" $srcs 2>&1 | ForEach-Object { "$_" }
 Chk $LASTEXITCODE "javac"
 
+Step "JVM tests"
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ROOT "test.ps1") -Classes (Join-Path $BUILD "classes")
+Chk $LASTEXITCODE "JVM tests"
+
 Step "jar"
 # d8 crashes when fed loose .class files with '$' in names (MainActivity$1.class). Gradle always
 # passes a jar, so we do the same.
@@ -92,6 +102,7 @@ Chk $LASTEXITCODE "zipalign"
 Step "keystore"
 $KS = "$ROOT\debug.keystore"
 if (-not (Test-Path $KS)) {
+    if ($RequireExistingKey) { throw "Release signing key disappeared; refusing to generate a new key" }
     & "$JDK\keytool.exe" -genkeypair -v -keystore "$KS" `
         -storepass android -keypass android -alias anyailive `
         -keyalg RSA -keysize 2048 -validity 10000 `

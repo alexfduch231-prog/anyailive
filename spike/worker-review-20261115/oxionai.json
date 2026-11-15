@@ -1,0 +1,19 @@
+{
+  "provider": "oxionai",
+  "requested_model": "claude-opus-5.5",
+  "task": "Settings persistence and model-first voice policies",
+  "files": [
+    "app/src/ru/alexv/anyailive/data/SettingsStore.java",
+    "app/src/ru/alexv/anyailive/ui/VoiceConfig.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 5893,
+  "status": "error",
+  "error_type": "HTTPError",
+  "http_status": 401,
+  "elapsed_seconds": 0.46
+}

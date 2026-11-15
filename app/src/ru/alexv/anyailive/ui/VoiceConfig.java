@@ -18,14 +18,34 @@ public final class VoiceConfig {
 
     /** Копия модели с подставленными моделями STT/TTS и голосом из настроек. */
     public static Model apply(SettingsStore settings, Model model) {
+        return apply(model, settings.get(SettingsStore.STT_MODEL, ""),
+                settings.get(SettingsStore.TTS_MODEL, ""), settings.get(SettingsStore.VOICE, ""));
+    }
+
+    /** Model-specific choices win; global settings only fill missing values. */
+    public static Model apply(Model model, String stt, String tts, String voice) {
         if (model == null) {
             return null;
         }
         Model m = model.copy();
-        m.sttModel = pick(settings.get(SettingsStore.STT_MODEL, ""), m.sttModel);
-        m.ttsModel = pick(settings.get(SettingsStore.TTS_MODEL, ""), m.ttsModel);
-        m.voice = pick(settings.get(SettingsStore.VOICE, ""), m.voice);
+        m.sttModel = pick(m.sttModel, stt);
+        m.ttsModel = pick(m.ttsModel, tts);
+        // A global OpenAI voice must not replace Gemini's provider-specific default.
+        m.voice = pick(m.voice, Model.LIVE_GEMINI.equals(m.liveProtocol) ? "" : voice);
         return m;
+    }
+
+    /** Resolve the same policy before permission prompts and after permission is granted. */
+    public static String route(String requested, Model model) {
+        boolean live = model != null && (Model.LIVE_OPENAI.equals(model.liveProtocol)
+                || Model.LIVE_GEMINI.equals(model.liveProtocol));
+        if (ENGINE_CASCADE.equals(requested)) {
+            return ENGINE_CASCADE;
+        }
+        if (ENGINE_LIVE.equals(requested)) {
+            return live ? ENGINE_LIVE : "unsupported";
+        }
+        return live ? ENGINE_LIVE : ENGINE_CASCADE;
     }
 
     /** Язык распознавания и синтеза; по умолчанию — то, что передали. */
@@ -42,6 +62,6 @@ public final class VoiceConfig {
         if (preferred != null && preferred.trim().length() > 0) {
             return preferred.trim();
         }
-        return fallback == null ? "" : fallback;
+        return fallback == null ? "" : fallback.trim();
     }
 }

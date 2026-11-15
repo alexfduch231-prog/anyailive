@@ -57,20 +57,21 @@ public class LiveActivity extends Activity {
     private EditText input;
     private Button send, interrupt, hangup;
 
-    private VoiceEngine engine;
-    private AudioIn mic;
-    private AudioOut out;
+    private volatile VoiceEngine engine;
+    private volatile AudioIn mic;
+    private volatile AudioOut out;
 
     private volatile boolean micPaused;
     private volatile boolean running;
-    private boolean duplex;
+    private final LiveSessionCallbacks callbacks = new LiveSessionCallbacks();
+    private volatile boolean duplex;
     private int lastState = VoiceEngine.IDLE;
 
     /** Писать ли аудио реплик модели в wav (настройка). */
     private boolean saveAudio;
 
     /** Накопитель PCM текущей реплики модели, если запись включена. */
-    private ByteArrayOutputStream clip;
+    private volatile ByteArrayOutputStream clip;
 
     private final StringBuilder heard = new StringBuilder();
     private final StringBuilder said = new StringBuilder();
@@ -175,6 +176,12 @@ public class LiveActivity extends Activity {
     }
 
     private void connect() {
+        if (isFinishing() || isDestroyed() || !callbacks.start()) return;
+        if (apiKey == null || apiKey.trim().length() == 0) {
+            toast("Для Live нужен API-ключ. Добавь его в настройках модели.");
+            finish();
+            return;
+        }
         SettingsStore settings = new SettingsStore(this);
         if (VoiceConfig.ENGINE_CASCADE.equals(VoiceConfig.engine(settings))) {
             toast(getString(R.string.live_cascade_only));
@@ -202,27 +209,36 @@ public class LiveActivity extends Activity {
         if (!out.start()) {
             toast(getString(R.string.voice_speaker_failed));
         }
-        duplex = AudioIn.aecAvailable();
-        if (!duplex) {
-            toast(getString(R.string.live_half_duplex));
+        if (engine instanceof LiveEngineOpenAI) {
+            final AudioOut playback = out;
+            ((LiveEngineOpenAI) engine).setPlaybackClock(new LiveEngineOpenAI.PlaybackClock() {
+                @Override public long playedMs() { return playback.playedMillis(); }
+            });
         }
-        saveAudio = settings.getBool(SettingsStore.SAVE_AUDIO, false);
+        duplex = false; // Actual AEC enablement is known only after AudioIn.start().
+        saveAudio = settings.getBool(SettingsStore.SAVE_AUDIO, false)
+                && settings.getBool(SettingsStore.KEEP_HISTORY, true);
         clip = saveAudio ? new ByteArrayOutputStream() : null;
         mic = new AudioIn(AudioIn.SAMPLE_RATE);
         running = true;
         engine.start(new EngineCallback());
+        if (!running || mic == null || engine == null) {
+            return; // start() can synchronously report failure and stop resources.
+        }
         if (!mic.start(new MicListener())) {
             toast(getString(R.string.voice_mic_busy));
             stopAll();
             finish();
             return;
         }
+        duplex = mic.aecEnabled() && settings.getBool(SettingsStore.BARGE_IN, true);
+        if (!duplex) toast(getString(R.string.live_half_duplex));
         showState(VoiceEngine.LISTENING);
     }
 
     private void sendTyped() {
         String text = input.getText().toString().trim();
-        if (text.length() == 0 || engine == null) {
+        if (text.length() == 0 || !running || isFinishing() || engine == null) {
             return;
         }
         input.setText("");
@@ -235,6 +251,11 @@ public class LiveActivity extends Activity {
 
     private void stopAll() {
         running = false;
+        callbacks.stop(); // Invalidate before engine.stop(), including its synchronous callbacks.
+        clip = null;
+        heard.setLength(0);
+        said.setLength(0);
+        if (circle != null) circle.clearAnimation();
         if (mic != null) {
             mic.stop();
             mic = null;
@@ -254,7 +275,9 @@ public class LiveActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        boolean wasRunning = running;
         stopAll();
+        if (wasRunning && !isFinishing()) finish(); // Return to chat, not a dead Live screen.
     }
 
     @Override
@@ -318,7 +341,13 @@ public class LiveActivity extends Activity {
         }
         ByteArrayOutputStream c = clip;
         if (c != null) {
-            c.write(pcm, 0, pcm.length);
+            synchronized (c) {
+                if (c.size() + pcm.length <= 24000 * 2 * 120) {
+                    c.write(pcm, 0, pcm.length); // At most two minutes per clip.
+                } else {
+                    clip = null; // Never export a silently truncated recording.
+                }
+            }
         }
     }
 
@@ -339,30 +368,33 @@ public class LiveActivity extends Activity {
 
     /** Реплика модели: пишем одной строкой, аудио — в wav рядом с сообщением. */
     private void persistAssistant(String text) {
-        final String clean = text == null ? "" : text.trim();
-        String path = saveClip();
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                said.setLength(0);
-                aiText.setText("");
+        callbacks.finishAssistant(text, new LiveSessionCallbacks.AssistantTurn() {
+            @Override public void discardAudio() {
+                if (clip != null) clip.reset();
+            }
+
+            @Override public void persist(String clean) {
+                String path = saveClip();
+                store.addMessage(chat.id, "assistant", clean,
+                        path == null ? "text" : "voice", path, false);
             }
         });
-        if (clean.length() == 0) {
-            return;
-        }
-        store.addMessage(chat.id, "assistant", clean,
-                path == null ? "text" : "voice", path, false);
+        said.setLength(0);
+        aiText.setText("");
     }
 
     /** Сбрасывает накопленный PCM реплики в wav; null — писать нечего или нельзя. */
     private String saveClip() {
         ByteArrayOutputStream c = clip;
-        if (c == null || c.size() == 0) {
+        if (c == null || !new SettingsStore(this).getBool(SettingsStore.KEEP_HISTORY, true)) {
             return null;
         }
-        byte[] pcm = c.toByteArray();
-        c.reset();
+        byte[] pcm;
+        synchronized (c) {
+            if (c.size() == 0) return null;
+            pcm = c.toByteArray();
+            c.reset();
+        }
         try {
             File dir = new File(getFilesDir(), "audio/" + chat.id);
             if (!dir.exists() && !dir.mkdirs()) {
@@ -378,8 +410,12 @@ public class LiveActivity extends Activity {
         }
     }
 
-    private void toast(String msg) {
-        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+    private void toast(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                if (!isFinishing()) Toast.makeText(LiveActivity.this, msg, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     /** Микрофон 16 кГц -> движок. */
@@ -387,7 +423,9 @@ public class LiveActivity extends Activity {
         @Override
         public void onPcm(byte[] data, int len) {
             VoiceEngine e = engine;
-            if (e == null || !running || micPaused || len <= 0) {
+            AudioOut playback = out;
+            if (e == null || !running || micPaused || len <= 0
+                    || (!duplex && playback != null && playback.isPlaying())) {
                 return;
             }
             byte[] copy = new byte[len];
@@ -403,31 +441,60 @@ public class LiveActivity extends Activity {
         }
     }
 
+    /** Serialize side effects with stopAll and check again after queued delivery. */
+    private void engineEvent(final Runnable action) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                if (!running || isFinishing() || isDestroyed()) return;
+                callbacks.runIfActive(action);
+            }
+        });
+    }
+
     /** Общая часть колбэков движка для экрана. */
     private abstract class UiSink {
-        void audio(byte[] pcm) { play(pcm); }
-
-        void bargeIn() {
-            if (out != null) {
-                out.flush();
-            }
-            if (clip != null) {
-                clip.reset();
-            }
-            micPaused = false;
+        void audio(final byte[] pcm) {
+            engineEvent(new Runnable() {
+                @Override public void run() { play(pcm); }
+            });
         }
 
-        void state(int state) { showState(state); }
+        void bargeIn() {
+            engineEvent(new Runnable() {
+                @Override public void run() {
+                    if (out != null) out.flush();
+                    if (clip != null) clip.reset();
+                    micPaused = false;
+                }
+            });
+        }
 
-        void user(String delta) { appendUser(delta); }
+        void state(final int state) {
+            engineEvent(new Runnable() {
+                @Override public void run() { showState(state); }
+            });
+        }
 
-        void assistant(String delta) { appendAi(delta); }
+        void user(final String delta) {
+            engineEvent(new Runnable() {
+                @Override public void run() { appendUser(delta); }
+            });
+        }
 
-        void error(String message) {
-            if (!isFinishing()) {
-                toast(message);
-            }
-            stopAll();
+        void assistant(final String delta) {
+            engineEvent(new Runnable() {
+                @Override public void run() { appendAi(delta); }
+            });
+        }
+
+        void error(final String message) {
+            engineEvent(new Runnable() {
+                @Override public void run() {
+                    toast(message);
+                    stopAll();
+                    finish();
+                }
+            });
         }
     }
 
@@ -473,23 +540,31 @@ public class LiveActivity extends Activity {
 
     private class EngineCallback implements VoiceEngine.Callback {
         @Override
-        public void onState(int state) { showState(state); }
+        public void onState(final int state) {
+            engineEvent(new Runnable() {
+                @Override public void run() { showState(state); }
+            });
+        }
 
         @Override
         public void onUserText(final String text) {
-            persistUser(text);
+            engineEvent(new Runnable() {
+                @Override public void run() { persistUser(text); }
+            });
         }
 
         @Override
         public void onAssistantText(final String text) {
-            persistAssistant(text);
+            engineEvent(new Runnable() {
+                @Override public void run() { persistAssistant(text); }
+            });
         }
 
         @Override
         public void onError(final String message) {
-            if (!isFinishing()) {
-                toast(message);
-            }
+            engineEvent(new Runnable() {
+                @Override public void run() { toast(message); }
+            });
         }
     }
 }

@@ -1,0 +1,17 @@
+{
+  "provider": "local",
+  "requested_model": "unavailable",
+  "task": "HTTP chat transport and provider error handling",
+  "files": [
+    "app/src/ru/alexv/anyailive/net/Http.java",
+    "app/src/ru/alexv/anyailive/chat/Providers.java",
+    "app/src/ru/alexv/anyailive/chat/ChatLink.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "status": "skipped",
+  "reason": "local_not_ready"
+}

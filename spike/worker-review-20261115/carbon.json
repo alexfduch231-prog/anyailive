@@ -1,0 +1,20 @@
+{
+  "provider": "carbon",
+  "requested_model": "gemini-4-carbon:free",
+  "task": "Secret storage backup and database initialization",
+  "files": [
+    "app/src/ru/alexv/anyailive/data/SecretStore.java",
+    "app/src/ru/alexv/anyailive/data/Db.java",
+    "app/AndroidManifest.xml"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 10485,
+  "status": "error",
+  "error_type": "HTTPError",
+  "http_status": 404,
+  "elapsed_seconds": 0.55
+}

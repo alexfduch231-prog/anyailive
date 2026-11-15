@@ -51,6 +51,7 @@ public final class ChatTests {
             System.out.println("PASS " + passed + " checks");
         } else {
             System.out.println("FAILURES " + failed + "/" + (passed + failed));
+            throw new AssertionError("Chat regression failures: " + failed);
         }
     }
 

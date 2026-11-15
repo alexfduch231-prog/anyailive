@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#FF101418</color>
-    <color name="fg">#FFE8EEF2</color>
-    <color name="accent">#FF4DD0A6</color>
-    <color name="muted">#FF8A98A5</color>
+    <!-- Gemini-подобная тёмная палитра -->
+    <color name="bg">#FF1B1C1D</color>
+    <color name="surface">#FF1E1F20</color>
+    <color name="surface2">#FF282A2C</color>
+    <color name="fg">#FFE3E3E3</color>
+    <color name="accent">#FFA8C7FA</color>
+    <color name="onAccent">#FF1B1C1D</color>
+    <color name="muted">#FF9AA0A6</color>
+    <color name="line">#FF333537</color>
+    <color name="bubbleUser">#FF333537</color>
+    <color name="bubbleAi">#FF1E1F20</color>
+    <!-- Обратная совместимость со старыми ссылками -->
+    <color name="bgOld">#FF101418</color>
 </resources>

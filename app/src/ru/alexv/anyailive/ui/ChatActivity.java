@@ -66,6 +66,19 @@ public class ChatActivity extends Activity {
     private VoiceEngine voice;
     private static final int REQ_MIC = 42;
 
+    /**
+     * Номер текущей голосовой сессии: после stopVoice() колбэки старой сессии
+     * не должны ни писать в историю, ни глушить ту, что началась вместо неё.
+     */
+    private final ChatSessionCallbacks fence = new ChatSessionCallbacks();
+
+    /**
+     * Запрос разрешения RECORD_AUDIO: системный диалог ставит экран на паузу,
+     * поэтому выданное в нём разрешение дожидается onResume и не открывает
+     * микрофон на закрытом экране или на новом экземпляре без своего запроса.
+     */
+    private final VoicePermissionPolicy permission = new VoicePermissionPolicy();
+
     public static Intent intent(Context from, long chatId) {
         Intent i = new Intent(from, ChatActivity.class);
         i.putExtra(EXTRA_CHAT_ID, chatId);
@@ -129,12 +142,25 @@ public class ChatActivity extends Activity {
     protected void onResume() {
         super.onResume();
         reload();
+        permission.onResume();
+        if (permission.consumePendingGrant()) {
+            // Разрешение выдали в диалоге, пока экран стоял на паузе.
+            startVoiceWithPolicy();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        // Пауза от системного диалога разрешения не отменяет ожидание результата.
+        permission.onPause();
         stopVoice();
+    }
+
+    @Override
+    protected void onDestroy() {
+        permission.onClose();
+        super.onDestroy();
     }
 
     private void reload() {
@@ -262,14 +288,28 @@ public class ChatActivity extends Activity {
             Toast.makeText(this, R.string.chat_no_model, Toast.LENGTH_LONG).show();
             return;
         }
+        startVoiceWithPolicy();
+    }
+
+    private void startVoiceWithPolicy() {
+        if (chat == null || model == null || streaming || voice != null) {
+            return;
+        }
         ru.alexv.anyailive.data.SettingsStore settings =
                 new ru.alexv.anyailive.data.SettingsStore(this);
-        if (VoiceConfig.ENGINE_LIVE.equals(VoiceConfig.engine(settings)) && model.live()) {
+        String route = VoiceConfig.route(VoiceConfig.engine(settings), model);
+        if (VoiceConfig.ENGINE_LIVE.equals(route)) {
             startActivity(LiveActivity.intent(this, chat.id));
             return;
         }
+        if (!VoiceConfig.ENGINE_CASCADE.equals(route)) {
+            Toast.makeText(this, R.string.live_no_live, Toast.LENGTH_LONG).show();
+            return;
+        }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+            if (permission.request()) {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+            }
             return;
         }
         startVoice();
@@ -277,9 +317,16 @@ public class ChatActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        if (code == REQ_MIC && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
-            startVoice();
+        if (code != REQ_MIC) {
+            return;
         }
+        boolean granted = results != null && results.length > 0
+                && results[0] == PackageManager.PERMISSION_GRANTED;
+        int action = permission.onResult(granted);
+        if (action == VoicePermissionPolicy.START) {
+            startVoiceWithPolicy();
+        }
+        // DEFER: разрешение выдано, но экран ещё на паузе — запуск в onResume.
     }
 
     private void startVoice() {
@@ -298,10 +345,11 @@ public class ChatActivity extends Activity {
                 ? new CascadeHttp(this, configured, link, prompt, language)
                 : new CascadeSystem(this, configured, link, prompt, language);
         setMicLabel(R.string.voice_mode_stop);
+        final int session = fence.begin();
         voice.start(new VoiceEngine.Callback() {
             @Override
             public void onState(final int state) {
-                runOnUiThread(new Runnable() {
+                onUi(session, new Runnable() {
                     @Override
                     public void run() {
                         setMicLabel(state == VoiceEngine.LISTENING ? R.string.voice_mode_listening
@@ -314,33 +362,17 @@ public class ChatActivity extends Activity {
 
             @Override
             public void onUserText(final String text) {
-                if (text != null && text.trim().length() > 0) {
-                    store.addMessage(chat.id, "user", text.trim());
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            reload();
-                        }
-                    });
-                }
+                saveTurn(session, "user", text);
             }
 
             @Override
             public void onAssistantText(final String text) {
-                if (text != null && text.trim().length() > 0) {
-                    store.addMessage(chat.id, "assistant", text.trim());
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            reload();
-                        }
-                    });
-                }
+                saveTurn(session, "assistant", text);
             }
 
             @Override
             public void onError(final String message) {
-                runOnUiThread(new Runnable() {
+                onUi(session, new Runnable() {
                     @Override
                     public void run() {
                         Toast.makeText(ChatActivity.this, message, Toast.LENGTH_LONG).show();
@@ -351,7 +383,34 @@ public class ChatActivity extends Activity {
         });
     }
 
+    /** Выполнить эффект колбэка на UI-потоке, если его сессия ещё жива. */
+    private void onUi(final int session, final Runnable effect) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                fence.runIfActive(session, effect);
+            }
+        });
+    }
+
+    /** Реплика каскада: запись в историю только для живой сессии и на UI-потоке. */
+    private void saveTurn(final int session, final String role, final String text) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                fence.deliverText(session, text, new ChatSessionCallbacks.TextSink() {
+                    @Override
+                    public void persist(String clean) {
+                        store.addMessage(chat.id, role, clean);
+                        reload();
+                    }
+                });
+            }
+        });
+    }
+
     private void stopVoice() {
+        fence.stop();
         if (voice != null) {
             voice.stop();
             voice = null;

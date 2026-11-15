@@ -4,263 +4,203 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 
-import java.util.ArrayDeque;
-
-/**
- * Воспроизведение PCM16 LE потоком: 24 кГц моно по умолчанию (выход OpenAI/Gemini и
- * /audio/speech), плюс конструктор с частотой и каналами для системного TTS.
- *
- * write() только копирует кусок в очередь и будит поток-писатель, поэтому вызывающий
- * (сетевой поток, который читает следующий абзац) не ждёт, пока доиграет предыдущий.
- * flush() мгновенно обрывает звук — это перебивание.
- */
+/** Asynchronous PCM16 playback. Flush and short nonblocking writes share one monitor. */
 public final class AudioOut {
-
     public static final int SAMPLE_RATE = 24000;
-
     private final int sampleRate;
     private final int channels;
-    /** Очередь чанков: отдельный монитор, чтобы stop() не дрался с write(). */
     private final Object lock = new Object();
-    private final ArrayDeque<byte[]> queue = new ArrayDeque<byte[]>();
-
+    private final AudioOutBuffer buffer;
+    // All mutable playback state is protected by lock, including AudioTrack access.
     private AudioTrack track;
     private Thread writer;
-    private volatile boolean running;
-    private long writtenFrames;
+    private boolean running;
     private String lastError;
 
-    public AudioOut() {
-        this(SAMPLE_RATE, 1);
-    }
+    public AudioOut() { this(SAMPLE_RATE, 1); }
 
     public AudioOut(int sampleRate, int channels) {
         this.sampleRate = sampleRate <= 0 ? SAMPLE_RATE : sampleRate;
         this.channels = channels == 2 ? 2 : 1;
+        buffer = new AudioOutBuffer(this.sampleRate, this.channels);
     }
 
-    public int sampleRate() {
-        return sampleRate;
-    }
+    public int sampleRate() { return sampleRate; }
+    public int channels() { return channels; }
+    public String lastError() { synchronized (lock) { return lastError; } }
 
-    public int channels() {
-        return channels;
-    }
-
-    public String lastError() {
-        return lastError;
-    }
-
-    /** Открыть AudioTrack в режиме потока и запустить писатель. @return false при отказе. */
-    public synchronized boolean start() {
-        if (running) {
+    public boolean start() {
+        synchronized (lock) {
+            if (running) return true;
+            releaseTrackLocked();
+            buffer.flush();
+            int mask = channels == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO;
+            try {
+                int min = AudioTrack.getMinBufferSize(sampleRate, mask, AudioFormat.ENCODING_PCM_16BIT);
+                if (min <= 0) min = sampleRate * channels;
+                track = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, mask,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        Math.max(min * 2, sampleRate * channels / 2), AudioTrack.MODE_STREAM);
+                if (track.getState() != AudioTrack.STATE_INITIALIZED) {
+                    lastError = "Динамик не поддерживает " + sampleRate + " Гц";
+                    releaseTrackLocked();
+                    return false;
+                }
+                track.play();
+            } catch (RuntimeException e) {
+                lastError = "Не удалось открыть динамик: " + e.getMessage();
+                releaseTrackLocked();
+                return false;
+            }
+            lastError = null;
+            running = true;
+            writer = new Thread(new Runnable() {
+                @Override public void run() { loop(); }
+            }, "AudioOut");
+            writer.setDaemon(true);
+            writer.start();
             return true;
         }
-        int chMask = channels == 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO;
-        int min = AudioTrack.getMinBufferSize(sampleRate, chMask, AudioFormat.ENCODING_PCM_16BIT);
-        if (min <= 0) {
-            min = sampleRate * channels;
-        }
-        int buf = Math.max(min * 2, sampleRate * channels / 2); // не меньше 250 мс
-        try {
-            track = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, chMask,
-                    AudioFormat.ENCODING_PCM_16BIT, buf, AudioTrack.MODE_STREAM);
-        } catch (RuntimeException e) {
-            track = null;
-            lastError = "Не удалось открыть динамик: " + e.getMessage();
-            return false;
-        }
-        if (track.getState() != AudioTrack.STATE_INITIALIZED) {
-            try {
-                track.release();
-            } catch (RuntimeException ignored) {
-                // уже освобождён
-            }
-            track = null;
-            lastError = "Динамик не поддерживает " + sampleRate + " Гц";
-            return false;
-        }
-        track.play();
-        writtenFrames = 0;
-        running = true;
-        writer = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                loop();
-            }
-        }, "AudioOut");
-        writer.setDaemon(true);
-        writer.start();
-        return true;
     }
 
-    /** Поставить кусок PCM16 в очередь на воспроизведение (не блокирует). */
+    /** Copy and queue PCM without waiting for hardware buffer space. */
     public void write(byte[] pcm, int len) {
-        if (pcm == null || len <= 0) {
-            return;
-        }
-        int n = Math.min(len, pcm.length) & ~1;
-        if (n <= 0) {
-            return;
-        }
-        byte[] copy = new byte[n];
-        System.arraycopy(pcm, 0, copy, 0, n);
+        if (pcm == null || len <= 0) return;
+        int n = Math.min(len, pcm.length);
+        n -= n % (2 * channels);
+        if (n == 0) return;
         synchronized (lock) {
-            queue.add(copy);
+            if (!running || track == null) return;
+            byte[] copy = new byte[n];
+            System.arraycopy(pcm, 0, copy, 0, n);
+            buffer.enqueue(copy);
             lock.notifyAll();
         }
-        AudioTrack t = track;
-        if (t != null && t.getPlayState() != AudioTrack.PLAYSTATE_PLAYING) {
-            try {
-                t.play();
-            } catch (RuntimeException ignored) {
-                // писать некуда, писатель сам разберётся
-            }
-        }
     }
 
-    /** Мгновенная остановка звука: очистить очередь и сбросить буфер дорожки. */
+    /** Invalidate queued AND writer-owned audio before discarding the hardware buffer. */
     public void flush() {
         synchronized (lock) {
-            queue.clear();
-        }
-        AudioTrack t = track;
-        if (t != null) {
-            try {
-                t.pause();
-                t.flush();
-                t.play();
-            } catch (RuntimeException ignored) {
-                // дорожка уже остановлена
+            buffer.flush();
+            if (track != null) {
+                try {
+                    track.pause();
+                    track.flush(); // pause + flush resets AudioTrack's playback head to zero.
+                    if (running) track.play();
+                } catch (RuntimeException e) {
+                    lastError = "Не удалось сбросить динамик: " + e.getMessage();
+                    running = false;
+                    releaseTrackLocked();
+                }
             }
-        }
-        writtenFrames = 0;
-    }
-
-    /** Идёт ли воспроизведение (очередь не пуста или дорожка ещё не доиграла). */
-    public boolean isPlaying() {
-        AudioTrack t = track;
-        boolean queued;
-        synchronized (lock) {
-            queued = !queue.isEmpty();
-        }
-        if (!running || t == null) {
-            return false;
-        }
-        if (queued) {
-            return true;
-        }
-        try {
-            return t.getPlaybackHeadPosition() < writtenFrames;
-        } catch (RuntimeException e) {
-            return false;
-        }
-    }
-
-    /** Сколько чанков ещё ждёт в очереди. */
-    public int queued() {
-        synchronized (lock) {
-            return queue.size();
-        }
-    }
-
-    /** Остановить воспроизведение и освободить дорожку. Идемпотентно. */
-    public synchronized void stop() {
-        running = false;
-        synchronized (lock) {
-            queue.clear();
             lock.notifyAll();
         }
-        Thread w = writer;
-        writer = null;
-        if (w != null && w != Thread.currentThread()) {
+    }
+
+    public boolean isPlaying() {
+        synchronized (lock) {
+            if (!running || track == null) return false;
             try {
-                w.join(500);
+                return buffer.hasAudio(track.getPlaybackHeadPosition());
+            } catch (RuntimeException e) {
+                return buffer.hasPending();
+            }
+        }
+    }
+
+    /** Actual hardware playback elapsed since the most recent flush/start, not queued duration. */
+    public long playedMillis() {
+        synchronized (lock) {
+            if (track == null) return 0;
+            try {
+                return buffer.playedMillis(track.getPlaybackHeadPosition());
+            } catch (RuntimeException e) {
+                return 0;
+            }
+        }
+    }
+
+    /** Number of chunks waiting behind the writer-owned chunk. */
+    public int queued() { synchronized (lock) { return buffer.queued(); } }
+
+    public void stop() {
+        Thread oldWriter;
+        synchronized (lock) {
+            running = false;
+            buffer.flush();
+            oldWriter = writer;
+            writer = null;
+            releaseTrackLocked();
+            lock.notifyAll();
+        }
+        // Never join while holding lock: the exiting writer needs it. A concurrent start
+        // is safe because loop also checks the writer identity, not just running.
+        if (oldWriter != null && oldWriter != Thread.currentThread()) {
+            try {
+                oldWriter.join(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
-        AudioTrack t = track;
-        track = null;
-        if (t != null) {
-            try {
-                t.pause();
-            } catch (RuntimeException ignored) {
-                // дорожка уже не играет
-            }
-            try {
-                t.flush();
-            } catch (RuntimeException ignored) {
-                // нечего сбрасывать
-            }
-            try {
-                t.stop();
-            } catch (RuntimeException ignored) {
-                // уже остановлена
-            }
-            try {
-                t.release();
-            } catch (RuntimeException ignored) {
-                // уже освобождена
-            }
-        }
     }
 
-    /** Синоним stop() — чтобы имя совпадало с «освободить ресурсы». */
-    public void release() {
-        stop();
+    public void release() { stop(); }
+
+    private void releaseTrackLocked() {
+        AudioTrack t = track;
+        track = null;
+        if (t == null) return;
+        try { t.pause(); } catch (RuntimeException ignored) { }
+        try { t.flush(); } catch (RuntimeException ignored) { }
+        try { t.stop(); } catch (RuntimeException ignored) { }
+        try { t.release(); } catch (RuntimeException ignored) { }
     }
 
     private void loop() {
         int failures = 0;
-        while (running) {
-            byte[] chunk;
-            synchronized (lock) {
-                while (running && queue.isEmpty()) {
+        AudioOutBuffer.Chunk previous = null;
+        try {
+            for (;;) {
+                synchronized (lock) {
+                    if (!running || writer != Thread.currentThread()) return;
+                    AudioOutBuffer.Chunk chunk = buffer.current();
+                    if (chunk == null) {
+                        lock.wait();
+                        continue;
+                    }
+                    if (chunk != previous) {
+                        previous = chunk;
+                        failures = 0;
+                    }
+                    if (!buffer.isCurrent(chunk)) continue;
+                    // At most 10 ms per call, nonblocking even when AudioTrack is full.
+                    // Checking the epoch, submitting bytes and accounting are atomic vs flush.
+                    int count = Math.min(chunk.data.length - chunk.offset,
+                            Math.max(1, sampleRate / 100) * channels * 2);
+                    int written;
                     try {
-                        lock.wait(200);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
+                        written = track.write(chunk.data, chunk.offset, count, AudioTrack.WRITE_NON_BLOCKING);
+                    } catch (RuntimeException e) {
+                        written = -1;
+                    }
+                    if (written > 0) {
+                        buffer.accept(chunk, written);
+                        failures = 0;
+                    } else {
+                        if (++failures > 200) {
+                            lastError = "Динамик перестал принимать звук";
+                            running = false;
+                            buffer.flush();
+                            releaseTrackLocked();
+                            return;
+                        }
+                        lock.wait(5); // releases monitor so flush/stop never wait for buffer space
                     }
                 }
-                chunk = queue.poll();
+                Thread.yield();
             }
-            if (chunk == null) {
-                continue;
-            }
-            AudioTrack t = track;
-            if (t == null) {
-                continue;
-            }
-            int off = 0;
-            while (off < chunk.length && running) {
-                int w;
-                try {
-                    w = t.write(chunk, off, chunk.length - off);
-                } catch (RuntimeException e) {
-                    w = -1;
-                }
-                if (w <= 0) {
-                    // Аудиодорожку мог отобрать звонок или мы сами сделали flush().
-                    failures++;
-                    if (failures > 200) {
-                        lastError = "Динамик перестал принимать звук";
-                        running = false;
-                        break;
-                    }
-                    try {
-                        Thread.sleep(5);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                    continue;
-                }
-                failures = 0;
-                off += w;
-                writtenFrames += w / (2 * channels);
-            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

@@ -1,0 +1,18 @@
+{
+  "provider": "dahl",
+  "requested_model": "zai-org/GLM-5.3-Flash",
+  "task": "Live screen lifecycle and assistant audio persistence",
+  "files": [
+    "app/src/ru/alexv/anyailive/ui/LiveActivity.java",
+    "app/src/ru/alexv/anyailive/ui/LiveSessionCallbacks.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 23176,
+  "status": "error",
+  "error_type": "RuntimeError",
+  "elapsed_seconds": 55.88
+}

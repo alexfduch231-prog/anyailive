@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.Looper;
 
 import java.io.ByteArrayOutputStream;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import ru.alexv.anyailive.data.Model;
@@ -60,6 +59,7 @@ public final class CascadeStt implements AudioIn.Listener {
     private volatile boolean running;
     private volatile boolean paused;
     private volatile int epoch;
+    private boolean transcribing; // guarded by lock; held through queued delivery
     private String apiKey = "";
 
     public CascadeStt(Context ctx, Model model, String language) {
@@ -115,6 +115,7 @@ public final class CascadeStt implements AudioIn.Listener {
             return true;
         }
         listener = l;
+        paused = false;
         if (apiKey.length() == 0) {
             apiKey = keyFromStore();
         }
@@ -140,6 +141,7 @@ public final class CascadeStt implements AudioIn.Listener {
         }
         vad = null;
         synchronized (lock) {
+            transcribing = false;
             capture.reset();
         }
     }
@@ -194,32 +196,40 @@ public final class CascadeStt implements AudioIn.Listener {
 
     @Override
     public void onError(final String message) {
-        main.post(new Runnable() {
+        fail(message, epoch);
+    }
+
+    private void fail(final String message, final int gen) {
+        post(new Runnable() {
             @Override
             public void run() {
                 Listener l = listener;
                 running = false;
+                synchronized (lock) { transcribing = false; }
                 if (l != null) {
                     l.onError(message);
                 }
             }
-        });
+        }, gen);
     }
 
     // ----------------------------------------------------------------- STT
 
     private void transcribe(final byte[] pcm) {
-        final int gen = epoch;
+        final int gen;
+        synchronized (lock) {
+            if (!running || transcribing) return;
+            transcribing = true;
+            gen = epoch;
+        }
+        // Half-duplex: do not capture a second utterance while this request is pending.
+        setPaused(true);
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 String boundary = HttpWire.boundary();
-                Map<String, String> fields = new LinkedHashMap<String, String>();
-                fields.put("model", model != null && model.sttModel != null
-                        && model.sttModel.trim().length() > 0
-                        ? model.sttModel.trim() : DEFAULT_MODEL);
-                fields.put("language", shortLang());
-                byte[] body = HttpWire.multipart(boundary, "file", "audio.wav", "audio/wav", pcm, fields);
+                byte[] body = TranscriptionBody.build(boundary, pcm,
+                        model == null ? null : model.sttModel, shortLang());
                 HttpWire.Bin r = HttpWire.post(
                         HttpWire.url(model == null ? "" : model.baseUrl, "/audio/transcriptions"),
                         HttpWire.headers(apiKey, model == null ? null : model.headers),
@@ -228,19 +238,19 @@ public final class CascadeStt implements AudioIn.Listener {
                     return;
                 }
                 if (r.code <= 0) {
-                    fail("Не удалось отправить запись на распознавание: " + r.text);
+                    fail("Не удалось отправить запись на распознавание: " + r.text, gen);
                     return;
                 }
                 if (r.code >= 400) {
-                    fail(errorFor(r.code));
+                    fail(errorFor(r.code), gen);
                     return;
                 }
                 String text = transcript(r.text);
                 if (text.length() == 0) {
-                    postIdle();
+                    postIdle(gen);
                     return;
                 }
-                deliver(text);
+                deliver(text, gen);
             }
         }, "CascadeStt");
         t.setDaemon(true);
@@ -282,44 +292,42 @@ public final class CascadeStt implements AudioIn.Listener {
         return language.length() >= 2 ? language.substring(0, 2) : "ru";
     }
 
-    private void postIdle() {
+    private void postIdle() { postIdle(epoch); }
+
+    private void postIdle(final int gen) {
         post(new Runnable() {
             @Override
             public void run() {
                 Listener l = listener;
+                synchronized (lock) { transcribing = false; }
+                if (running) setPaused(false);
                 if (l != null && running) {
                     l.onIdle();
                 }
             }
-        });
+        }, gen);
     }
 
-    private void deliver(final String text) {
+    private void deliver(final String text, final int gen) {
         post(new Runnable() {
             @Override
             public void run() {
                 Listener l = listener;
+                synchronized (lock) { transcribing = false; }
                 if (l != null && running) {
                     l.onText(text);
                 }
             }
-        });
+        }, gen);
     }
 
-    private void fail(final String message) {
+    private void post(final Runnable r) { post(r, epoch); }
+
+    private void post(final Runnable r, final int gen) {
         main.post(new Runnable() {
-            @Override
-            public void run() {
-                Listener l = listener;
-                running = false;
-                if (l != null) {
-                    l.onError(message);
-                }
+            @Override public void run() {
+                if (gen == epoch) r.run();
             }
         });
-    }
-
-    private void post(Runnable r) {
-        main.post(r);
     }
 }

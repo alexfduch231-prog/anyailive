@@ -1,0 +1,18 @@
+{
+  "provider": "gemini",
+  "requested_model": "gemini-3.5-flash",
+  "task": "System TTS startup backlog and asynchronous completion",
+  "files": [
+    "app/src/ru/alexv/anyailive/voice/SystemTts.java",
+    "app/src/ru/alexv/anyailive/voice/PendingSpeechQueue.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 14519,
+  "status": "completed",
+  "answer": "[gemini: gemini-3.5-flash]\n                @Override\n                public void run() {\n                    Callback c = cb;\n                    if (c == null || released) {\n                        return;\n                    }\n                    if (pcm == null) {\n",
+  "elapsed_seconds": 14.61
+}

@@ -1,0 +1,19 @@
+{
+  "provider": "intern",
+  "requested_model": "deepseek-v4-pro-0813",
+  "task": "Model edit and endpoint validation",
+  "files": [
+    "app/src/ru/alexv/anyailive/ui/ModelEditActivity.java",
+    "app/src/ru/alexv/anyailive/data/ModelsStore.java"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 14410,
+  "status": "error",
+  "error_type": "HTTPError",
+  "http_status": 404,
+  "elapsed_seconds": 1.71
+}

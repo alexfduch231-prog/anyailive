@@ -1,0 +1,19 @@
+{
+  "provider": "codexrelay-gpt61",
+  "requested_model": "gpt-6.1-sol",
+  "task": "Test blind spots in lifecycle fixtures",
+  "files": [
+    "spike/lifecycle-test/CascadeLifecycleTest.java",
+    "spike/lifecycle-test/android/os/Handler.java",
+    "spike/verify_cascade_lifecycle.py"
+  ],
+  "max_tokens": 1200,
+  "timeout_seconds": 60,
+  "retries": 0,
+  "fallback": false,
+  "actual_model": "not exposed by worker API",
+  "prompt_characters": 9230,
+  "status": "completed",
+  "answer": "[codexrelay-gpt61: gpt-6.1-sol]\n1. **Medium — “single-flight” test never attempts overlapping work**  \n   **Location:** `spike/lifecycle-test/CascadeLifecycleTest.java:80–85`  \n   **Trigger:** A regression leaves `paused` true but allows another transcription request while the first is pending. This fixture invokes `transcribe` only once and never reads the `requests` counter, so its assertion cannot detect duplicate requests.  \n   **Minimal fix:** While the first request is blocked, submit a second transcription through the entry point responsible for enforcing single-flight behavior. Assert that only one request starts, using deterministic synchronization rather than a sleep, then release and drain completion.  \n   **Assumption:** Single-flight behavior is an intended contract, as indicated by the test name. The supplied source does not establish whether enforcement belongs in `transcribe` or its caller; exercise the enforcing entry point.\n\n2. **Medium — Delayed callbacks are silently discarded by the Handler fixture**  \n   **Location:** `spike/lifecycle-test/android/os/Handler.java:8`  \n   **Trigger:** Lifecycle work is posted through `postDelayed` before interruption, stop, or restart. The fixture returns success without retaining or executing that work, so stale delayed callbacks cannot be tested. Moving a callback from `post` to `postDelayed` could also make it disappear from these tests instead of exposing its lifecycle effects.  \n   **Minimal fix:** Retain delayed callbacks in a deterministic, virtual-time queue. Add explicit clock advancement and drain due work after lifecycle transitions, asserting that stale work has no effects and current work still runs.  \n   **Assumption:** Relevant production paths use, or may be changed to use, `postDelayed`; those implementations were not supplied. This is a confirmed fixture limitation, not a claim that production currently mishandles delayed callbacks.\n\nStatic review only; no execution performed.",
+  "elapsed_seconds": 24.83
+}

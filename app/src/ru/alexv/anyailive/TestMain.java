@@ -65,7 +65,7 @@ public class TestMain {
         check("model.emptyToString", "".equals(empty.toString()));
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         section("skeleton");
         check("build.smoke", true);
         check("strings.brand", "anyAIlive".equals("anyAIlive"));
@@ -77,6 +77,17 @@ public class TestMain {
         LiveTests.run();
         ChatTests.run();
         AudioTests.run();
+        ru.alexv.anyailive.tests.SettingsPolicyTests.run();
+        ru.alexv.anyailive.data.MemoryHistoryTests.main(new String[0]);
+        ru.alexv.anyailive.voice.AudioOutBufferTests.main(new String[0]);
+        ru.alexv.anyailive.ui.LiveSessionCallbacksTests.main(new String[0]);
+        ru.alexv.anyailive.tests.ChatSessionCallbacksTests.main(new String[0]);
+        ru.alexv.anyailive.tests.VoicePermissionPolicyTests.main(new String[0]);
+        ru.alexv.anyailive.tests.ChatAudioFilesTests.main(new String[0]);
+        ru.alexv.anyailive.tests.TtsEnginePolicyTests.main(new String[0]);
+        ru.alexv.anyailive.tests.TtsRoutingPolicyTests.main(new String[0]);
+        ru.alexv.anyailive.tests.PendingSpeechQueueTests.main(new String[0]);
+        ru.alexv.anyailive.tests.TranscriptionBodyTests.main(new String[0]);
 
         System.out.println();
         System.out.println(fails == 0 ? ("PASS " + total + " checks") : ("FAILURES " + fails + "/" + total));

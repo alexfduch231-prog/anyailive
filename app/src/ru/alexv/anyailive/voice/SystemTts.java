@@ -49,10 +49,11 @@ public final class SystemTts {
     private final String language;
     private final int targetRate;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Map<String, File> files = new HashMap<String, File>();
-    private final ArrayDeque<Pending> backlog = new ArrayDeque<Pending>();
+    private final Map<String, File> files = new java.util.concurrent.ConcurrentHashMap<String, File>();
+    private final PendingSpeechQueue<Pending> backlog = new PendingSpeechQueue<Pending>(20);
 
     private TextToSpeech tts;
+    private String requestedEngine;
     private Callback cb;
     private boolean ready;
     private boolean fileMode;
@@ -108,6 +109,14 @@ public final class SystemTts {
             return false;
         }
         try {
+            java.util.List<String> installed = new java.util.ArrayList<String>();
+            android.content.Intent query = new android.content.Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE);
+            for (android.content.pm.ResolveInfo info : ctx.getPackageManager().queryIntentServices(query, 0)) {
+                if (info.serviceInfo != null) installed.add(info.serviceInfo.packageName);
+            }
+            String saved = new ru.alexv.anyailive.data.SettingsStore(ctx).get(
+                    ru.alexv.anyailive.data.SettingsStore.TTS_ENGINE, "");
+            requestedEngine = TtsEnginePolicy.resolve(saved, installed);
             tts = new TextToSpeech(ctx, new TextToSpeech.OnInitListener() {
                 @Override
                 public void onInit(int status) {
@@ -118,7 +127,7 @@ public final class SystemTts {
                         }
                     });
                 }
-            });
+            }, requestedEngine);
         } catch (RuntimeException e) {
             tts = null;
             unavailable("Не удалось запустить синтез речи: " + e.getMessage());
@@ -174,8 +183,8 @@ public final class SystemTts {
         }
         String id = utteranceId == null ? "vb" + (++seq) : utteranceId;
         if (!ready) {
-            if (backlog.size() < 20) {
-                backlog.add(new Pending(text, id));
+            if (!backlog.offer(new Pending(text, id))) {
+                postFailed(id, "Очередь синтеза заполнена: фраза не принята");
             }
             return;
         }
@@ -187,15 +196,20 @@ public final class SystemTts {
 
     private boolean synthesize(String text, String id) {
         File file = new File(ctx.getCacheDir(), id + "-" + (++seq) + ".wav");
+        // Register before dispatch: completion may arrive from the Binder thread immediately.
+        files.put(id, file);
         try {
             int r = tts.synthesizeToFile(text, null, file, id);
             if (r != TextToSpeech.SUCCESS) {
+                files.remove(id, file);
+                Wav.deleteQuietly(file);
                 fileMode = false;
                 return false;
             }
-            files.put(id, file);
             return true;
         } catch (RuntimeException e) {
+            files.remove(id, file);
+            Wav.deleteQuietly(file);
             fileMode = false;
             return false;
         }
@@ -257,6 +271,7 @@ public final class SystemTts {
 
         @Override
         public void onError(String utteranceId) {
+            if (utteranceId != null) Wav.deleteQuietly(files.remove(utteranceId));
             postFailed(utteranceId, "ошибка синтеза");
         }
     }
